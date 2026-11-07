@@ -1,0 +1,39 @@
+.venv/
+__pycache__/
+.pytest_cache/
+
+# Certidões e documentos de fornecedores
+*.pdf
+Certidoes/
+
+# Segredos e configuração local
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+credentials*.json
+secrets*
+
+# Sessões e rastros do navegador (podem conter cookies e dados do gov.br)
+storage_state*.json
+playwright/.auth/
+playwright-report/
+test-results/
+*.har
+trace*.zip
+
+# Registros, capturas de tela e planilhas de CNPJs
+*.log
+capturas/
+screenshots/
+*.csv
+*.xlsx
+
+# Ferramentas e sistema
+.claude/
+.vscode/
+.idea/
+.DS_Store
+*.pyc

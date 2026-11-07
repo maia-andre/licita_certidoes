@@ -1,0 +1,71 @@
+import datetime as dt
+from unittest.mock import MagicMock
+
+import pytest
+from playwright.sync_api import Error as PlaywrightError
+
+from certidoes.portais import tst
+from certidoes.portais.tst import PortalErro, obter_cndt
+
+CNPJ = "11222333000181"
+AGORA = dt.datetime(2026, 11, 6, 14, 30, 5)
+
+
+def obter(portal, caminho, tmp_path, tempo_limite_ms=10_000):
+    return obter_cndt(
+        CNPJ,
+        pasta_base=tmp_path,
+        url=portal.url + caminho,
+        headless=True,
+        tempo_limite_ms=tempo_limite_ms,
+        agora=AGORA,
+    )
+
+
+def test_guarda_pdf_na_pasta_do_cnpj(portal, tmp_path):
+    arquivo = obter(portal, "/ok", tmp_path)
+    assert arquivo == tmp_path / CNPJ / "cndt-20261106-143005.pdf"
+    assert arquivo.read_bytes().startswith(b"%PDF")
+
+
+def test_preenche_cnpj_e_deixa_o_captcha_para_o_servidor(portal, tmp_path):
+    obter(portal, "/ok", tmp_path)
+    assert portal.registro == {"cnpj": CNPJ, "captcha": "", "foco": "captcha-resposta"}
+
+
+def test_captcha_errado_continua_aguardando_ate_o_servidor_acertar(portal, tmp_path):
+    arquivo = obter(portal, "/captcha-errado", tmp_path)
+    assert arquivo.read_bytes().startswith(b"%PDF")
+
+
+def test_arquivo_que_nao_e_pdf_gera_erro_e_nao_fica_guardado(portal, tmp_path):
+    with pytest.raises(PortalErro, match="não é um PDF"):
+        obter(portal, "/nao-pdf", tmp_path)
+    assert not list(tmp_path.rglob("*.pdf"))
+
+
+def test_tempo_esgotado_gera_erro_claro(portal, tmp_path):
+    with pytest.raises(PortalErro, match="Tempo esgotado"):
+        obter(portal, "/parado", tmp_path, tempo_limite_ms=500)
+
+
+def test_janela_fechada_gera_erro_claro(monkeypatch, tmp_path):
+    # Página fechada pelo próprio servidor não dá para provocar por script no portal falso.
+    playwright = MagicMock()
+    navegador = playwright.return_value.__enter__.return_value.chromium.launch.return_value
+    pagina = navegador.new_context.return_value.new_page.return_value
+    pagina.expect_download.side_effect = PlaywrightError("Target page, context or browser has been closed")
+    monkeypatch.setattr(tst, "sync_playwright", playwright)
+    with pytest.raises(PortalErro, match="fechada"):
+        tst.obter_cndt(CNPJ, pasta_base=tmp_path)
+    navegador.close.assert_called_once()
+
+
+def test_portal_fora_do_ar_gera_erro_claro(tmp_path):
+    with pytest.raises(PortalErro, match="Não foi possível"):
+        obter_cndt(CNPJ, pasta_base=tmp_path, url="http://127.0.0.1:9/", headless=True, tempo_limite_ms=2_000)
+
+
+def test_formulario_diferente_do_esperado_gera_erro_claro(portal, tmp_path):
+    with pytest.raises(PortalErro, match="formulário"):
+        obter(portal, "/sem-formulario", tmp_path, tempo_limite_ms=500)

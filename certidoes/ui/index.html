@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Certidões</title>
+<style>
+  body { font: 16px system-ui, sans-serif; margin: 32px; color: #1b1b1b; background: #fff; }
+  h1 { font-size: 22px; margin: 0 0 20px; }
+  label { display: block; font-weight: 600; margin-bottom: 6px; }
+  input { font: inherit; padding: 8px; width: 100%; box-sizing: border-box; }
+  button { font: inherit; padding: 8px 16px; margin-top: 12px; cursor: pointer; }
+  #status { margin-top: 20px; min-height: 48px; overflow-wrap: anywhere; }
+  .erro { color: #b00020; }
+  [hidden] { display: none; }
+</style>
+</head>
+<body>
+  <h1>Certidão trabalhista (CNDT)</h1>
+  <form id="formulario">
+    <label for="cnpj">CNPJ da empresa</label>
+    <input id="cnpj" autocomplete="off" autofocus>
+    <button id="emitir" type="submit">Emitir CNDT</button>
+  </form>
+  <p id="status" role="status"></p>
+  <button id="abrir" type="button" hidden>Abrir PDF</button>
+<script>
+  const status = document.getElementById('status');
+  const emitir = document.getElementById('emitir');
+  const abrir = document.getElementById('abrir');
+
+  function mostrar(texto, erro) {
+    status.textContent = texto;
+    status.className = erro ? 'erro' : '';
+  }
+
+  document.getElementById('formulario').addEventListener('submit', async (evento) => {
+    evento.preventDefault();
+    emitir.disabled = true;
+    abrir.hidden = true;
+    mostrar('Na janela que vai abrir, digite os caracteres da imagem e clique em "Emitir Certidão".');
+    try {
+      const r = await window.pywebview.api.emitir(document.getElementById('cnpj').value);
+      mostrar(r.ok ? r.mensagem + ' Salva em: ' + r.arquivo : r.mensagem, !r.ok);
+      abrir.hidden = !r.ok;
+    } catch (erro) {
+      mostrar('Erro inesperado: ' + erro, true);
+    } finally {
+      emitir.disabled = false;
+    }
+  });
+
+  abrir.addEventListener('click', () => window.pywebview.api.abrir_pdf());
+</script>
+</body>
+</html>
