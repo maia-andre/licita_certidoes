@@ -30,6 +30,13 @@ def normalizar(texto) -> str:
     return cnpj
 
 
+def cnpj_da_matriz(cnpj: str) -> str:
+    """CNPJ da matriz (ordem 0001) de um CNPJ já normalizado."""
+    base = cnpj[:8] + "0001"
+    primeiro = _digito(base)
+    return base + primeiro + _digito(base + primeiro)
+
+
 def formatar(cnpj: str) -> str:
     """'11222333000181' -> '11.222.333/0001-81'. Espera um CNPJ já normalizado."""
     return f"{cnpj[:2]}.{cnpj[2:5]}.{cnpj[5:8]}/{cnpj[8:12]}-{cnpj[12:]}"

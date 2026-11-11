@@ -1,6 +1,6 @@
 # Plan: Obtenção assistida de certidões de fornecedores
 Spec: docs/spec.md, versão 1.3 | Gerado: 2026-11-06
-Progresso: 4/10 incrementos concluídos
+Progresso: 5/10 incrementos concluídos
 
 ## Backlog
 
@@ -29,7 +29,7 @@ Depende de: INC-03
 Entrega verificável: as certidões obtidas mostram situação e validade iguais às do PDF, ou "Conferir no PDF", com o aviso de que a decisão cabe ao servidor.
 
 ### INC-05 — Identificação da empresa pela BrasilAPI
-Status: pendente
+Status: concluído (2026-11-11)
 Itens da spec: REQ-02, REQ-03, REQ-04 | RN-07 | CE-02, CE-03, CE-04
 Depende de: INC-04
 Entrega verificável: a tela mostra os dados da empresa, pede a escolha em caso de filial e recusa um CNPJ fora de SP sem abrir nenhum portal.

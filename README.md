@@ -10,7 +10,7 @@ Programa local e gratuito para pregoeiros, gestores e fiscais de contratos.
 ![Python](https://img.shields.io/badge/Python-3-3776AB?logo=python&logoColor=white)
 ![Playwright](https://img.shields.io/badge/Playwright-Chromium-2EAD33?logo=playwright&logoColor=white)
 ![Plataforma](https://img.shields.io/badge/plataforma-Windows%20%7C%20Linux-555)
-![Testes](https://img.shields.io/badge/testes-112%20passando-brightgreen)
+![Testes](https://img.shields.io/badge/testes-137%20passando-brightgreen)
 
 </div>
 
@@ -28,7 +28,13 @@ O `licita_certidoes` cuida da parte repetitiva e deixa com o servidor o que é d
 flowchart LR
     A[Servidor digita o CNPJ] --> B{CNPJ válido?}
     B -- Não --> C[Mostra o erro<br/>sem consulta externa]
-    B -- Sim --> D[Para cada certidão,<br/>abre o portal]
+    B -- Sim --> I[Identifica a empresa<br/>na BrasilAPI]
+    I --> J{Filial?}
+    J -- Sim --> K[Servidor escolhe<br/>filial ou matriz]
+    J -- Não --> L{CNPJ de SP?}
+    K --> L
+    L -- Não --> M[Informa que não é<br/>atendida, sem abrir portais]
+    L -- Sim --> D[Para cada certidão,<br/>abre o portal]
     D --> E[Servidor resolve o captcha]
     E --> F[PDF salvo na<br/>pasta do CNPJ]
     F --> G{Há mais<br/>certidões?}
@@ -46,6 +52,7 @@ O programa abre cada portal de um de dois jeitos:
 Hoje o programa emite **três** certidões em sequência: a CND federal, o CRF do FGTS e a CNDT. A primeira sequência real foi feita no Windows em 11/11/2026.
 
 - Valida o CNPJ, numérico ou alfanumérico, antes de qualquer consulta externa.
+- Identifica a empresa na BrasilAPI (razão social, UF, situação cadastral, matriz ou filial). Se for filial, mostra a matriz e pede a escolha; se o CNPJ escolhido não for de SP, não abre nenhum portal.
 - Mostra cada certidão numa tabela, com o estado atualizado durante a consulta.
 - Lê de cada PDF a situação (Negativa, Positiva com efeitos de negativa, Regular...) e a validade, avisando quando está vencida. Na dúvida, mostra "Conferir no PDF".
 - Se um portal falhar, marca "Falha técnica" e segue para a próxima certidão.
@@ -121,8 +128,8 @@ sudo apt install python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1
 | 02 | CND federal e sequência de itens | CNDT e CND em sequência, com o estado de cada item | ✅ Concluído |
 | 03 | CRF FGTS | CRF obtido ou "Não emitida" com a mensagem do portal | ✅ Concluído |
 | 04 | Situação e validade na tela | Dados lidos do PDF, ou "Conferir no PDF" | ✅ Concluído |
-| 05 | Identificação da empresa | Dados da BrasilAPI, escolha de filial e recusa fora de SP | ⏭️ Próximo |
-| 06 | Certidão Única estadual | Emissão pelo SIDEB | Pendente |
+| 05 | Identificação da empresa | Dados da BrasilAPI, escolha de filial e recusa fora de SP | ✅ Concluído |
+| 06 | Certidão Única estadual | Emissão pelo SIDEB | ⏭️ Próximo |
 | 07 | Pular e repetir itens | Refazer só o item que falhou | Pendente |
 | 08 | Falência no e-SAJ | Pedido enviado e item em "Pedido feito: acompanhar" | Pendente |
 | 09 | Complemento no eproc | Pedido com gov.br e os seis itens na tela | Pendente |

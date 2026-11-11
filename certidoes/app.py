@@ -7,7 +7,9 @@ import threading
 
 import webview
 
-from certidoes.cnpj import CnpjInvalido, formatar, normalizar
+from certidoes import empresa
+from certidoes.cnpj import CnpjInvalido, cnpj_da_matriz, formatar, normalizar
+from certidoes.empresa import ErroIdentificacao
 from certidoes.sequencia import ITENS, Execucao
 
 TELA = pathlib.Path(__file__).parent / "ui" / "index.html"
@@ -25,24 +27,60 @@ def _em_segundo_plano(funcao) -> None:
     threading.Thread(target=funcao, daemon=True).start()
 
 
+AVISO_FILIAL = ("Você escolheu a filial. A certidão de falência deve seguir o distribuidor da sede "
+                "(art. 69, II, da Lei 14.133/2021).")
+NAO_ATENDIDA = "Empresa com CNPJ de {uf}: não atendida nesta versão, que cobre apenas CNPJ de SP. Nenhum portal foi aberto."
+EM_ANDAMENTO = "Já existe uma consulta em andamento."
+
+
 class Api:
-    def __init__(self, itens=ITENS, abrir=_abrir_arquivo, executar=_em_segundo_plano):
+    def __init__(self, itens=ITENS, abrir=_abrir_arquivo, executar=_em_segundo_plano, consultar=empresa.consultar):
         self._itens = itens
         self._abrir = abrir
         self._executar = executar
+        self._consultar = consultar
         self._trava = threading.Lock()
         self._execucao = None
         self._rodando = False
+        self._opcoes = {}  # CNPJ -> Empresa identificada que o servidor pode escolher
 
-    def emitir(self, texto):
-        """Valida o CNPJ e inicia a sequência em segundo plano. A tela acompanha por estado()."""
+    def identificar(self, texto):
+        """Valida o CNPJ (REQ-01) e consulta a BrasilAPI (REQ-02). Filial traz também a matriz (REQ-03)."""
         try:
             cnpj = normalizar(texto)
         except CnpjInvalido as erro:
             return {"ok": False, "mensagem": str(erro)}
         with self._trava:
             if self._rodando:
-                return {"ok": False, "mensagem": "Já existe uma consulta em andamento."}
+                return {"ok": False, "mensagem": EM_ANDAMENTO}
+            self._opcoes = {}
+        try:
+            principal = self._consultar(cnpj)
+        except ErroIdentificacao as erro:
+            return {"ok": False, "mensagem": str(erro)}
+        opcoes = {principal.cnpj: principal}
+        resposta = {"ok": True, "empresa": principal.para_tela(), "matriz": None, "erro_matriz": None}
+        if not principal.matriz:
+            try:
+                matriz = self._consultar(cnpj_da_matriz(cnpj))
+                opcoes[matriz.cnpj] = matriz
+                resposta["matriz"] = matriz.para_tela()
+            except ErroIdentificacao as erro:
+                resposta["erro_matriz"] = f"Matriz {formatar(cnpj_da_matriz(cnpj))}: {erro}"
+        with self._trava:
+            self._opcoes = opcoes
+        return resposta
+
+    def emitir(self, cnpj):
+        """Inicia a sequência para um CNPJ identificado e atendido (REQ-04). A tela acompanha por estado()."""
+        with self._trava:
+            escolhida = self._opcoes.get(cnpj) if isinstance(cnpj, str) else None
+            if escolhida is None:
+                return {"ok": False, "mensagem": "Identifique a empresa antes de emitir as certidões."}
+            if not escolhida.atendida:
+                return {"ok": False, "mensagem": NAO_ATENDIDA.format(uf=escolhida.uf)}
+            if self._rodando:
+                return {"ok": False, "mensagem": EM_ANDAMENTO}
             self._rodando = True
             self._execucao = Execucao(self._itens, cnpj)
             execucao = self._execucao
@@ -55,7 +93,7 @@ class Api:
                     self._rodando = False
 
         self._executar(rodar)
-        return {"ok": True, "cnpj": formatar(cnpj)}
+        return {"ok": True, "cnpj": formatar(cnpj), "aviso": None if escolhida.matriz else AVISO_FILIAL}
 
     def estado(self):
         with self._trava:

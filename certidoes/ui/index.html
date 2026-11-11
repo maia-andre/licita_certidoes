@@ -22,6 +22,11 @@
   .nao-emitida label { font-weight: 400; font-size: 13px; margin-bottom: 4px; }
   .nao-emitida textarea { font: inherit; font-size: 14px; width: 100%; box-sizing: border-box; padding: 6px; }
   .nao-emitida button { margin-top: 6px; }
+  .empresa { margin-top: 20px; padding: 12px 16px; border: 1px solid #ccc; border-radius: 4px; }
+  .empresa dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0; }
+  .empresa dt { font-weight: 600; }
+  .empresa dd { margin: 0; }
+  #escolhas button { margin-right: 8px; }
   [hidden] { display: none; }
 </style>
 </head>
@@ -30,9 +35,15 @@
   <form id="formulario">
     <label for="cnpj">CNPJ da empresa</label>
     <input id="cnpj" autocomplete="off" autofocus>
-    <button id="emitir" type="submit">Emitir certidões</button>
+    <button id="identificar" type="submit">Identificar empresa</button>
   </form>
+  <section id="empresa" class="empresa" hidden>
+    <div id="dados-empresa"></div>
+    <p id="aviso-empresa"></p>
+    <div id="escolhas"></div>
+  </section>
   <p id="status" role="status"></p>
+  <p id="aviso-filial" class="alerta" hidden></p>
   <table id="itens" hidden>
     <thead><tr><th>Certidão</th><th>Portal</th><th>Estado</th><th>Situação</th><th>Validade</th><th>Detalhes</th></tr></thead>
     <tbody></tbody>
@@ -40,7 +51,12 @@
   <p id="aviso" class="aviso">Este programa só reúne informações dos portais. A análise dos documentos e a decisão cabem ao servidor. Sempre confira o PDF.</p>
 <script>
   const status = document.getElementById('status');
-  const emitir = document.getElementById('emitir');
+  const identificar = document.getElementById('identificar');
+  const cartao = document.getElementById('empresa');
+  const dadosEmpresa = document.getElementById('dados-empresa');
+  const avisoEmpresa = document.getElementById('aviso-empresa');
+  const escolhas = document.getElementById('escolhas');
+  const avisoFilial = document.getElementById('aviso-filial');
   const tabela = document.getElementById('itens');
   const corpo = tabela.querySelector('tbody');
   const linhas = new Map();
@@ -114,6 +130,11 @@
     tabela.hidden = itens.length === 0;
   }
 
+  function travar(sim) {
+    identificar.disabled = sim;
+    for (const b of escolhas.querySelectorAll('button')) b.disabled = sim || b.dataset.bloqueado === 'sim';
+  }
+
   async function acompanhar() {
     try {
       const r = await window.pywebview.api.estado();
@@ -126,27 +147,98 @@
     } catch (erro) {
       mostrar('Erro inesperado: ' + erro, true);
     }
-    emitir.disabled = false;
+    travar(false);
   }
 
-  document.getElementById('formulario').addEventListener('submit', async (evento) => {
-    evento.preventDefault();
-    emitir.disabled = true;
+  function linhaDado(dl, rotulo, valor, classe) {
+    const dt = document.createElement('dt');
+    dt.textContent = rotulo;
+    const dd = document.createElement('dd');
+    dd.textContent = valor;
+    if (classe) dd.className = classe;
+    dl.append(dt, dd);
+  }
+
+  function botaoEscolha(rotulo, emp) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = rotulo;
+    if (!emp.atendida) b.dataset.bloqueado = 'sim';
+    b.disabled = !emp.atendida;
+    b.addEventListener('click', () => iniciar(emp.cnpj));
+    escolhas.appendChild(b);
+  }
+
+  function mostrarEmpresa(r) {
+    const e = r.empresa;
+    const dl = document.createElement('dl');
+    linhaDado(dl, 'Razão social', e.razao_social);
+    linhaDado(dl, 'CNPJ', e.cnpj_formatado + (e.matriz ? ' (matriz)' : ' (filial)'));
+    linhaDado(dl, 'UF', e.uf);
+    linhaDado(dl, 'Situação cadastral', e.situacao_cadastral + (e.ativa ? '' : ' — atenção: empresa não está ativa'),
+              e.ativa ? '' : 'erro');
+    if (r.matriz) linhaDado(dl, 'Matriz', r.matriz.cnpj_formatado + ' — ' + r.matriz.uf);
+    dadosEmpresa.replaceChildren(dl);
+    escolhas.replaceChildren();
+
+    const avisos = [];
+    if (e.matriz) {
+      if (e.atendida) botaoEscolha('Emitir certidões', e);
+      else avisos.push('Empresa com CNPJ de ' + e.uf + ': não atendida nesta versão, que cobre apenas CNPJ de SP.');
+    } else {
+      avisos.push('Este CNPJ é de filial. Escolha qual CNPJ consultar.');
+      botaoEscolha('Consultar a filial ' + e.cnpj_formatado + (e.atendida ? '' : ' (fora de SP)'), e);
+      if (r.matriz) {
+        botaoEscolha('Consultar a matriz ' + r.matriz.cnpj_formatado + (r.matriz.atendida ? '' : ' (fora de SP)'), r.matriz);
+        if (!r.matriz.atendida) avisos.push('A matriz é de ' + r.matriz.uf + ': não atendida nesta versão.');
+      }
+      if (r.erro_matriz) avisos.push(r.erro_matriz);
+      if (!e.atendida) avisos.push('A filial é de ' + e.uf + ': não atendida nesta versão.');
+    }
+    avisoEmpresa.textContent = avisos.join(' ');
+    avisoEmpresa.className = avisos.length ? 'alerta' : '';
+    cartao.hidden = false;
+  }
+
+  async function iniciar(cnpj) {
+    travar(true);
     try {
-      const r = await window.pywebview.api.emitir(document.getElementById('cnpj').value);
+      const r = await window.pywebview.api.emitir(cnpj);
       if (!r.ok) {
         mostrar(r.mensagem, true);
-        emitir.disabled = false;
+        travar(false);
         return;
       }
       corpo.replaceChildren();
       linhas.clear();
+      avisoFilial.textContent = r.aviso || '';
+      avisoFilial.hidden = !r.aviso;
       mostrar('Consultando o CNPJ ' + r.cnpj + '...');
       acompanhar();
     } catch (erro) {
       mostrar('Erro inesperado: ' + erro, true);
-      emitir.disabled = false;
+      travar(false);
     }
+  }
+
+  document.getElementById('formulario').addEventListener('submit', async (evento) => {
+    evento.preventDefault();
+    travar(true);
+    cartao.hidden = true;
+    avisoFilial.hidden = true;
+    mostrar('Identificando a empresa...');
+    try {
+      const r = await window.pywebview.api.identificar(document.getElementById('cnpj').value);
+      if (r.ok) {
+        mostrar('');
+        mostrarEmpresa(r);
+      } else {
+        mostrar(r.mensagem, true);
+      }
+    } catch (erro) {
+      mostrar('Erro inesperado: ' + erro, true);
+    }
+    travar(false);
   });
 </script>
 </body>
