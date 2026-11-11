@@ -14,19 +14,40 @@ class NaoEmitida(Exception):
     """O portal não emitiu a certidão (CE-10). Nunca é "Falha técnica"."""
 
 
-class SinalNaoEmitida:
-    """Aviso do servidor, pela tela, de que o portal não emitiu (REQ-11, modo navegador do servidor)."""
+class Pulada(Exception):
+    """O servidor pulou o item pela tela (REQ-07). Nunca indica irregularidade."""
+
+
+class SinalServidor:
+    """Ação do servidor, pela tela, sobre o item em andamento.
+
+    O portal chama `verificar()` enquanto espera; a primeira ação vale:
+    pular (REQ-07) levanta Pulada; "o portal não emitiu" (REQ-11) levanta NaoEmitida.
+    """
 
     def __init__(self):
-        self._evento = threading.Event()
+        self._trava = threading.Lock()
+        self._acao = None
         self.mensagem = ""
 
-    def informar(self, mensagem: str = "") -> None:
-        self.mensagem = mensagem
-        self._evento.set()
+    def pular(self) -> None:
+        with self._trava:
+            if self._acao is None:
+                self._acao = "pular"
 
-    def informado(self) -> bool:
-        return self._evento.is_set()
+    def informar_nao_emitida(self, mensagem: str = "") -> None:
+        with self._trava:
+            if self._acao is None:
+                self._acao = "nao_emitida"
+                self.mensagem = mensagem
+
+    def verificar(self) -> None:
+        with self._trava:
+            acao = self._acao
+        if acao == "pular":
+            raise Pulada()
+        if acao == "nao_emitida":
+            raise NaoEmitida(self.mensagem)
 
 
 def guardar_pdf(dados: bytes, cnpj: str, pasta_base, prefixo: str, agora: dt.datetime) -> pathlib.Path:

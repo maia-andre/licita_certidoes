@@ -13,7 +13,7 @@ import time
 import uuid
 import webbrowser
 
-from certidoes.portais.comum import PASTA_PADRAO, NaoEmitida, PortalErro, guardar_pdf
+from certidoes.portais.comum import PASTA_PADRAO, PortalErro, guardar_pdf
 
 TEMPO_LIMITE_S = 5 * 60
 INTERVALO_S = 1.0
@@ -79,19 +79,19 @@ def _candidatos(pasta: pathlib.Path, padrao: str, desde: float):
 
 
 def aguardar_arquivo(pasta, padrao, desde, tempo_limite_s=TEMPO_LIMITE_S, intervalo_s=INTERVALO_S,
-                     relogio=time.monotonic, dormir=time.sleep, aceitar=None, nao_emitida=None) -> pathlib.Path:
+                     relogio=time.monotonic, dormir=time.sleep, aceitar=None, sinal=None) -> pathlib.Path:
     """Espera um arquivo novo cujo nome case com `padrao` e cujo tamanho pare de mudar.
 
     `desde` é o instante (time.time) a partir do qual o arquivo conta como novo.
     `aceitar(dados)`, se informado, confere o conteúdo; arquivos recusados são ignorados.
-    `nao_emitida` (SinalNaoEmitida), se o servidor avisar pela tela, encerra a espera com NaoEmitida.
+    `sinal` (SinalServidor): se o servidor pular ou informar que o portal não emitiu, a espera termina.
     """
     fim = relogio() + tempo_limite_s
     tamanhos = {}
     recusados = set()
     while True:
-        if nao_emitida is not None and nao_emitida.informado():
-            raise NaoEmitida(nao_emitida.mensagem)
+        if sinal is not None:
+            sinal.verificar()
         for arquivo in _candidatos(pathlib.Path(pasta), padrao, desde):
             try:
                 tamanho = arquivo.stat().st_size
@@ -125,7 +125,7 @@ def obter_pelo_navegador(
     prefixo,
     nome_portal,
     ao_aguardar=None,
-    nao_emitida=None,
+    sinal=None,
     aceitar=None,
     pasta_base=PASTA_PADRAO,
     pasta=None,
@@ -146,7 +146,7 @@ def obter_pelo_navegador(
     if ao_aguardar:
         ao_aguardar()
     arquivo = aguardar_arquivo(pasta, padrao, desde, tempo_limite_s, intervalo_s,
-                               aceitar=aceitar, nao_emitida=nao_emitida)
+                               aceitar=aceitar, sinal=sinal)
     destino = guardar_pdf(arquivo.read_bytes(), cnpj, pasta_base, prefixo, agora or dt.datetime.now())
     try:
         arquivo.unlink()

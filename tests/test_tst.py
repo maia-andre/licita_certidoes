@@ -1,4 +1,5 @@
 import datetime as dt
+import time
 from unittest.mock import MagicMock
 
 import pytest
@@ -61,7 +62,8 @@ def test_janela_fechada_gera_erro_claro(monkeypatch, tmp_path):
     playwright = MagicMock()
     navegador = playwright.return_value.__enter__.return_value.chromium.launch.return_value
     pagina = navegador.new_context.return_value.new_page.return_value
-    pagina.expect_download.side_effect = PlaywrightError("Target page, context or browser has been closed")
+    pagina.is_closed.return_value = False
+    pagina.wait_for_timeout.side_effect = PlaywrightError("Target page, context or browser has been closed")
     monkeypatch.setattr(tst, "sync_playwright", playwright)
     with pytest.raises(PortalErro, match="fechada"):
         tst.obter_cndt(CNPJ, pasta_base=tmp_path)
@@ -86,3 +88,35 @@ def test_portal_fora_do_ar_gera_erro_claro(tmp_path):
 def test_formulario_diferente_do_esperado_gera_erro_claro(portal, tmp_path):
     with pytest.raises(PortalErro, match="formulário"):
         obter(portal, "/sem-formulario", tmp_path, tempo_limite_ms=500)
+
+
+@pytest.mark.parametrize("fechar", [
+    lambda pagina: pagina.close(),  # servidor fecha a aba
+    lambda pagina: pagina.context.browser.close(),  # servidor fecha o Chromium inteiro
+])
+def test_janela_fechada_durante_a_espera_vira_erro_claro(portal, tmp_path, monkeypatch, fechar):
+    # CE-08 com Playwright real: fecha de verdade logo antes da espera pelo download.
+    original = tst._esperar_download
+
+    def fechar_e_esperar(pagina, *args):
+        fechar(pagina)
+        return original(pagina, *args)
+
+    monkeypatch.setattr(tst, "_esperar_download", fechar_e_esperar)
+    with pytest.raises(PortalErro, match="fechada"):
+        obter(portal, "/parado", tmp_path)
+    assert not list(tmp_path.rglob("*.pdf"))
+
+
+def test_servidor_pula_o_item_enquanto_o_tst_espera(portal, tmp_path):
+    import threading
+
+    from certidoes.portais.comum import Pulada, SinalServidor
+
+    sinal = SinalServidor()
+    inicio = time.monotonic()
+    with pytest.raises(Pulada):
+        obter_cndt(CNPJ, ao_aguardar=lambda: threading.Timer(0.3, sinal.pular).start(), sinal=sinal,
+                   pasta_base=tmp_path, url=portal.url + "/parado", headless=True, tempo_limite_ms=20_000, agora=AGORA)
+    assert time.monotonic() - inicio < 10  # não esperou o tempo-limite
+    assert not list(tmp_path.rglob("*.pdf"))

@@ -10,7 +10,7 @@ Programa local e gratuito para pregoeiros, gestores e fiscais de contratos.
 ![Python](https://img.shields.io/badge/Python-3-3776AB?logo=python&logoColor=white)
 ![Playwright](https://img.shields.io/badge/Playwright-Chromium-2EAD33?logo=playwright&logoColor=white)
 ![Plataforma](https://img.shields.io/badge/plataforma-Windows%20%7C%20Linux-555)
-![Testes](https://img.shields.io/badge/testes-137%20passando-brightgreen)
+![Testes](https://img.shields.io/badge/testes-150%20passando-brightgreen)
 
 </div>
 
@@ -56,6 +56,7 @@ Hoje o programa emite **três** certidões em sequência: a CND federal, o CRF d
 - Mostra cada certidão numa tabela, com o estado atualizado durante a consulta.
 - Lê de cada PDF a situação (Negativa, Positiva com efeitos de negativa, Regular...) e a validade, avisando quando está vencida. Na dúvida, mostra "Conferir no PDF".
 - Se um portal falhar, marca "Falha técnica" e segue para a próxima certidão.
+- Permite pular a certidão em andamento e repetir só a que falhou, não foi emitida ou foi pulada.
 - Guarda os PDFs na pasta `Certidoes\<CNPJ>\` do usuário (no Windows, `C:\Users\<usuário>\Certidoes\`).
 - Abre cada PDF pela própria tela.
 
@@ -130,8 +131,8 @@ sudo apt install python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1
 | 04 | Situação e validade na tela | Dados lidos do PDF, ou "Conferir no PDF" | ✅ Concluído |
 | 05 | Identificação da empresa | Dados da BrasilAPI, escolha de filial e recusa fora de SP | ✅ Concluído |
 | 06 | Certidão Única estadual | Emissão pelo SIDEB | ⏸️ Adiado: exige login gov.br |
-| 07 | Pular e repetir itens | Refazer só o item que falhou | ⏭️ Próximo |
-| 08 | Falência no e-SAJ | Pedido enviado e item em "Pedido feito: acompanhar" | Pendente |
+| 07 | Pular e repetir itens | Refazer só o item que falhou | ✅ Concluído |
+| 08 | Falência no e-SAJ | Pedido enviado e item em "Pedido feito: acompanhar" | ⏭️ Próximo |
 | 09 | Complemento no eproc | Pedido com gov.br e os seis itens na tela | Pendente |
 | 10 | Validação com CNPJs reais | Resultado de 10 CNPJs de SP conferido com os PDFs | Pendente |
 

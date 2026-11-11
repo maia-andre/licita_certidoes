@@ -4,7 +4,7 @@ import threading
 import pytest
 
 from certidoes.portais import caixa
-from certidoes.portais.comum import NaoEmitida, PortalErro, SinalNaoEmitida
+from certidoes.portais.comum import NaoEmitida, PortalErro, Pulada, SinalServidor
 from tests.conftest import pdf_com_texto
 
 CNPJ = "17051740000150"
@@ -85,14 +85,14 @@ def test_sem_crf_do_cnpj_termina_em_tempo_esgotado(pastas):
 
 def test_servidor_informa_que_o_portal_nao_emitiu(pastas):
     downloads, _ = pastas
-    sinal = SinalNaoEmitida()
+    sinal = SinalServidor()
 
     def abrir(url):
-        threading.Timer(0.1, lambda: sinal.informar("Empregador nao cadastrado.")).start()
+        threading.Timer(0.1, lambda: sinal.informar_nao_emitida("Empregador nao cadastrado.")).start()
         return True
 
     with pytest.raises(NaoEmitida, match="Empregador nao cadastrado."):
-        obter(pastas, abrir, nao_emitida=sinal)
+        obter(pastas, abrir, sinal=sinal)
 
 
 def test_e_crf_do_cnpj():

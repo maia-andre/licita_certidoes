@@ -34,11 +34,10 @@ def test_estado_inicial_e_aguardando():
 
 def nao_emite_ate_o_servidor_avisar(execucao_ref):
     """Portal no navegador do servidor que só termina quando o servidor informa pela tela."""
-    def obter(cnpj, ao_aguardar, nao_emitida):
+    def obter(cnpj, ao_aguardar, sinal):
         ao_aguardar()
         execucao_ref["acao"]()
-        if nao_emitida.informado():
-            raise NaoEmitida(nao_emitida.mensagem)
+        sinal.verificar()
         return pathlib.Path("/a.pdf")
     return obter
 
@@ -79,8 +78,8 @@ def test_nao_emitida_so_vale_para_item_do_navegador_que_aguarda_o_servidor():
     execucao = seq.Execucao([item("auto", automatizado), item("nav", obtem("/nav.pdf"), modo=seq.NAVEGADOR)], CNPJ)
     assert execucao.informar_nao_emitida("nav") is False  # ainda "Aguardando"
     execucao.rodar()
-    assert recebidos == [{}]  # item automatizado não recebe o sinal
-    assert recusas == [False]
+    assert list(recebidos[0]) == ["sinal"]  # todo item recebe o sinal (para "Pular")
+    assert recusas == [False]  # mas "não emitiu" só vale no navegador do servidor
     assert execucao.informar_nao_emitida("nav") is False  # já "Obtida"
     assert execucao.informar_nao_emitida("inexistente") is False
     assert [i["estado"] for i in execucao.itens()] == ["Obtida", "Obtida"]
@@ -99,7 +98,7 @@ def test_percorre_os_itens_em_sequencia_e_marca_obtida():
     ordem = []
 
     def registrando(chave):
-        def obter(cnpj, ao_aguardar):
+        def obter(cnpj, ao_aguardar, **kw):
             ordem.append((chave, cnpj))
             return pathlib.Path(f"/{chave}.pdf")
         return obter
@@ -115,7 +114,7 @@ def test_estados_durante_a_execucao():
     vistos = []
     execucao = None
 
-    def obter(cnpj, ao_aguardar):
+    def obter(cnpj, ao_aguardar, **kw):
         vistos.append(execucao.itens()[0]["estado"])
         ao_aguardar()
         vistos.append((execucao.itens()[0]["estado"], execucao.itens()[0]["mensagem"]))
@@ -132,7 +131,7 @@ def test_item_seguinte_fica_aguardando_enquanto_o_anterior_roda():
     vistos = []
     execucao = None
 
-    def primeiro(cnpj, ao_aguardar):
+    def primeiro(cnpj, ao_aguardar, **kw):
         vistos.append(execucao.itens()[1]["estado"])
         return pathlib.Path("/a.pdf")
 
@@ -142,7 +141,7 @@ def test_item_seguinte_fica_aguardando_enquanto_o_anterior_roda():
 
 
 def test_falha_de_portal_vira_falha_tecnica_e_a_sequencia_segue():
-    def falha(cnpj, ao_aguardar):
+    def falha(cnpj, ao_aguardar, **kw):
         raise PortalErro("Portal fora do ar.")
 
     execucao = seq.Execucao([item("a", falha), item("b", obtem("/b.pdf"))], CNPJ)
@@ -153,7 +152,7 @@ def test_falha_de_portal_vira_falha_tecnica_e_a_sequencia_segue():
 
 
 def test_erro_inesperado_tambem_vira_falha_tecnica_e_a_sequencia_segue():
-    def quebra(cnpj, ao_aguardar):
+    def quebra(cnpj, ao_aguardar, **kw):
         raise RuntimeError("boom")
 
     execucao = seq.Execucao([item("a", quebra), item("b", obtem("/b.pdf"))], CNPJ)
@@ -186,7 +185,7 @@ def pdf_cndt(tmp_path, validade="10/05/2027", cnpj="11.222.333/0001-81"):
 
 
 def executar_com_leitura(arquivo, hoje=dt.date(2026, 11, 11), ler=leitura.ler_cndt):
-    execucao = seq.Execucao([seq.Item("a", "A", "P", lambda cnpj, ao_aguardar: arquivo, "", seq.AUTOMATIZADO, ler)],
+    execucao = seq.Execucao([seq.Item("a", "A", "P", lambda cnpj, ao_aguardar, **kw: arquivo, "", seq.AUTOMATIZADO, ler)],
                             CNPJ, hoje=lambda: hoje)
     execucao.rodar()
     return execucao.itens()[0]
@@ -226,7 +225,7 @@ def test_arquivo_que_sumiu_pede_conferencia(tmp_path):
 
 
 def test_item_nao_obtido_fica_sem_situacao_e_validade():
-    def falha(cnpj, ao_aguardar):
+    def falha(cnpj, ao_aguardar, **kw):
         raise PortalErro("fora do ar")
 
     execucao = seq.Execucao([item("a", falha)], CNPJ)
@@ -236,3 +235,113 @@ def test_item_nao_obtido_fica_sem_situacao_e_validade():
 
 def test_itens_reais_tem_leitor():
     assert [i.ler for i in seq.ITENS] == [leitura.ler_cnd, leitura.ler_crf, leitura.ler_cndt]
+
+
+def espera_ate_pular(execucao_ref, chave):
+    """Portal que chama a ação de teste enquanto aguarda e respeita o sinal."""
+    def obter(cnpj, ao_aguardar, sinal):
+        ao_aguardar()
+        execucao_ref["acao"]()
+        sinal.verificar()
+        return pathlib.Path(f"/{chave}.pdf")
+    return obter
+
+
+def test_servidor_pula_o_item_em_andamento_e_a_sequencia_segue():
+    ref = {}
+    execucao = seq.Execucao([item("a", espera_ate_pular(ref, "a")), item("b", obtem("/b.pdf"))], CNPJ)
+    respostas = []
+    ref["acao"] = lambda: respostas.append(execucao.pular("a"))
+    execucao.rodar()
+    a, b = execucao.itens()
+    assert respostas == [True]
+    assert (a["estado"], a["mensagem"], a["arquivo"]) == ("Pulada", "Pulada pelo servidor.", None)
+    assert b["estado"] == "Obtida"
+
+
+def test_so_pula_o_item_em_andamento():
+    vistos = []
+    execucao = None
+
+    def primeiro(cnpj, ao_aguardar, **kw):
+        vistos.append(execucao.pular("b"))  # "b" ainda está "Aguardando"
+        return pathlib.Path("/a.pdf")
+
+    execucao = seq.Execucao([item("a", primeiro), item("b", obtem("/b.pdf"))], CNPJ)
+    assert execucao.pular("a") is False  # nada rodando
+    execucao.rodar()
+    assert vistos == [False]
+    assert execucao.pular("a") is False  # já "Obtida"
+    assert execucao.pular("x") is False
+    assert [i["estado"] for i in execucao.itens()] == ["Obtida", "Obtida"]
+
+
+def test_repete_so_o_item_que_falhou():
+    tentativas = {"a": 0, "b": 0}
+
+    def a_falha_na_primeira(cnpj, ao_aguardar, **kw):
+        tentativas["a"] += 1
+        if tentativas["a"] == 1:
+            raise PortalErro("fora do ar")
+        return pathlib.Path("/a.pdf")
+
+    def b(cnpj, ao_aguardar, **kw):
+        tentativas["b"] += 1
+        return pathlib.Path("/b.pdf")
+
+    execucao = seq.Execucao([item("a", a_falha_na_primeira), item("b", b)], CNPJ)
+    execucao.rodar()
+    assert execucao.itens()[0]["estado"] == "Falha técnica"
+    assert execucao.pode_repetir("a") and not execucao.pode_repetir("b")
+    execucao.repetir("a")
+    assert tentativas == {"a": 2, "b": 1}
+    assert [i["estado"] for i in execucao.itens()] == ["Obtida", "Obtida"]
+    assert execucao.itens()[0]["mensagem"] == ""
+
+
+def test_repete_item_pulado_e_nao_emitido():
+    ref = {"acao": lambda: None}
+    execucao = seq.Execucao([item("a", espera_ate_pular(ref, "a")),
+                             item("n", nao_emite_ate_o_servidor_avisar(ref), modo=seq.NAVEGADOR)], CNPJ)
+    ref["acao"] = lambda: (execucao.pular("a"), execucao.informar_nao_emitida("n", "msg"))
+    execucao.rodar()
+    assert [i["estado"] for i in execucao.itens()] == ["Pulada", "Não emitida"]
+    ref["acao"] = lambda: None
+    execucao.repetir("a")
+    execucao.repetir("n")
+    assert [i["estado"] for i in execucao.itens()] == ["Obtida", "Obtida"]
+
+
+def test_repetir_item_obtido_ou_inexistente_nao_faz_nada():
+    chamadas = []
+
+    def obter(cnpj, ao_aguardar, **kw):
+        chamadas.append(cnpj)
+        return pathlib.Path("/a.pdf")
+
+    execucao = seq.Execucao([item("a", obter)], CNPJ)
+    execucao.rodar()
+    execucao.repetir("a")
+    execucao.repetir("x")
+    assert chamadas == [CNPJ]
+
+
+def test_repeticao_limpa_situacao_e_validade_anteriores(tmp_path):
+    arquivo = pdf_cndt(tmp_path)
+    tentativas = []
+
+    def obter(cnpj, ao_aguardar, **kw):
+        tentativas.append(1)
+        if len(tentativas) == 2:
+            raise PortalErro("caiu na repetição")
+        return arquivo
+
+    execucao = seq.Execucao([seq.Item("a", "A", "P", obter, "", seq.AUTOMATIZADO, leitura.ler_cndt)], CNPJ,
+                            hoje=lambda: dt.date(2026, 11, 11))
+    execucao.rodar()
+    assert execucao.itens()[0]["situacao"] == "Negativa"
+    with execucao._trava:  # força o item a um estado repetível
+        execucao._estado["a"]["estado"] = "Falha técnica"
+    execucao.repetir("a")
+    a = execucao.itens()[0]
+    assert (a["estado"], a["situacao"], a["validade"], a["arquivo"]) == ("Falha técnica", None, None, None)

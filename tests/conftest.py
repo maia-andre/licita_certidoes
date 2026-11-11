@@ -105,7 +105,7 @@ def portal():
 def pdf_com_texto(*linhas: str) -> bytes:
     """PDF mínimo de uma página com as linhas em Helvetica, legível pela pypdf. Só ASCII."""
     def escapar(texto):
-        return texto.replace("\\", "\\\\").replace("(", "\(").replace(")", "\)")
+        return texto.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
 
     comandos = ["BT", "/F1 11 Tf", "14 TL", "50 780 Td"]
     for linha in linhas:

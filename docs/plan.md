@@ -1,6 +1,6 @@
 # Plan: Obtenção assistida de certidões de fornecedores
 Spec: docs/spec.md, versão 1.4 | Gerado: 2026-11-06
-Progresso: 5/10 incrementos concluídos
+Progresso: 6/10 incrementos concluídos (1 adiado)
 
 ## Backlog
 
@@ -41,7 +41,7 @@ Depende de: INC-05
 Entrega verificável: um CNPJ real de SP obtém a Certidão Única pelo SIDEB, e fora do horário do sistema o item mostra "Falha técnica" com essa explicação.
 
 ### INC-07 — Pular e repetir itens
-Status: pendente
+Status: concluído (2026-11-11)
 Itens da spec: REQ-07, REQ-14 | CE-08
 Depende de: INC-05 (INC-06 adiado)
 Entrega verificável: o servidor pula um item, repete só esse item depois e, ao fechar o navegador no meio do fluxo, a tela continua aberta com o item em "Falha técnica".

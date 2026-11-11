@@ -20,7 +20,7 @@ def item(chave, obter):
 
 
 def obtem(caminho):
-    return lambda cnpj, ao_aguardar: pathlib.Path(caminho)
+    return lambda cnpj, ao_aguardar, **kw: pathlib.Path(caminho)
 
 
 def criar_api(itens=None, abrir=None, executar=lambda funcao: funcao(), consultar=matriz_sp):
@@ -36,7 +36,7 @@ def iniciar(api, cnpj=CNPJ):
 
 def test_cnpj_invalido_mostra_erro_sem_consulta_externa():
     chamadas = []
-    api = criar_api(itens=[item("a", lambda cnpj, ao_aguardar: chamadas.append(cnpj))])
+    api = criar_api(itens=[item("a", lambda cnpj, ao_aguardar, **kw: chamadas.append(cnpj))])
     resposta = api.identificar("11.222.333/0001-82")
     assert resposta["ok"] is False
     assert "CNPJ inválido" in resposta["mensagem"]
@@ -47,7 +47,7 @@ def test_cnpj_invalido_mostra_erro_sem_consulta_externa():
 def test_emitir_inicia_a_sequencia_com_o_cnpj_normalizado():
     chamadas = []
 
-    def obter(cnpj, ao_aguardar):
+    def obter(cnpj, ao_aguardar, **kw):
         chamadas.append(cnpj)
         return pathlib.Path("/tmp/a.pdf")
 
@@ -81,7 +81,7 @@ def test_estado_mostra_cada_item_com_o_arquivo_como_texto():
 
 
 def test_falha_em_um_item_nao_interrompe_o_outro():
-    def falha(cnpj, ao_aguardar):
+    def falha(cnpj, ao_aguardar, **kw):
         raise PortalErro("Tempo esgotado")
 
     api = criar_api(itens=[item("a", falha), item("b", obtem("/tmp/b.pdf"))])
@@ -97,11 +97,12 @@ def test_informar_nao_emitida_repassa_para_o_item_que_aguarda_o_servidor():
 
     respostas = []
 
-    def obter(cnpj, ao_aguardar, nao_emitida):
+    def obter(cnpj, ao_aguardar, sinal):
         ao_aguardar()
         respostas.append(api.informar_nao_emitida("a", 123))  # mensagem que não é texto é recusada
         respostas.append(api.informar_nao_emitida("a", "Empregador não cadastrado."))
-        raise NaoEmitida(nao_emitida.mensagem)
+        sinal.verificar()
+        raise AssertionError("o sinal deveria ter encerrado")
 
     api = criar_api(itens=[Item("a", "A", "Portal a", obter, "Instrução", NAVEGADOR)])
     assert api.informar_nao_emitida("a", "") is False  # sem consulta
@@ -168,7 +169,7 @@ def test_segunda_consulta_simultanea_e_recusada():
 
 
 def test_nova_consulta_depois_de_erro_inesperado_e_aceita():
-    def quebra(cnpj, ao_aguardar):
+    def quebra(cnpj, ao_aguardar, **kw):
         raise RuntimeError("boom")
 
     api = criar_api(itens=[item("a", quebra)])
@@ -252,7 +253,7 @@ def test_nova_tentativa_depois_de_falha_da_brasilapi():
 
 def test_emitir_sem_identificar_e_recusado():
     chamadas = []
-    api = criar_api(itens=[item("a", lambda cnpj, ao_aguardar: chamadas.append(cnpj))])
+    api = criar_api(itens=[item("a", lambda cnpj, ao_aguardar, **kw: chamadas.append(cnpj))])
     assert api.emitir(CNPJ) == {"ok": False, "mensagem": "Identifique a empresa antes de emitir as certidões."}
     assert api.emitir(None)["ok"] is False
     assert chamadas == []
@@ -261,7 +262,7 @@ def test_emitir_sem_identificar_e_recusado():
 def test_empresa_fora_de_sp_nao_abre_nenhum_portal():
     chamadas = []
     rj = Empresa(CNPJ, "EMPRESA RJ LTDA", "RJ", "ATIVA", True)
-    api = criar_api(itens=[item("a", lambda cnpj, ao_aguardar: chamadas.append(cnpj))],
+    api = criar_api(itens=[item("a", lambda cnpj, ao_aguardar, **kw: chamadas.append(cnpj))],
                     consultar=empresas(**{f"c{CNPJ}": rj}))
     r = api.identificar(CNPJ)
     assert r["empresa"]["atendida"] is False
@@ -293,7 +294,7 @@ def test_escolher_a_filial_mostra_o_aviso_da_falencia_pela_sede():
     filial = Empresa(FILIAL, "EMPRESA FICTICIA LTDA", "SP", "ATIVA", False)
     chamadas = []
 
-    def obter(cnpj, ao_aguardar):
+    def obter(cnpj, ao_aguardar, **kw):
         chamadas.append(cnpj)
         return pathlib.Path("/tmp/a.pdf")
 
@@ -309,7 +310,7 @@ def test_escolher_a_matriz_consulta_o_cnpj_da_matriz_sem_aviso():
     filial = Empresa(FILIAL, "EMPRESA FICTICIA LTDA", "SP", "ATIVA", False)
     chamadas = []
 
-    def obter(cnpj, ao_aguardar):
+    def obter(cnpj, ao_aguardar, **kw):
         chamadas.append(cnpj)
         return pathlib.Path("/tmp/a.pdf")
 
@@ -348,3 +349,39 @@ def test_nova_identificacao_descarta_as_opcoes_anteriores():
     api.identificar(outra)
     assert api.emitir(CNPJ)["ok"] is False
     assert api.emitir(outra)["ok"] is True
+
+
+def test_pular_e_repetir_pela_api():
+    agendadas = []
+    tentativas = []
+
+    def obter(cnpj, ao_aguardar, sinal):
+        tentativas.append(1)
+        ao_aguardar()
+        respostas.append(api.pular("a"))
+        sinal.verificar()
+        return pathlib.Path("/tmp/a.pdf")
+
+    respostas = []
+    api = criar_api(itens=[item("a", obter), item("b", obtem("/tmp/b.pdf"))], executar=agendadas.append)
+    assert api.pular("a") is False  # sem consulta
+    assert api.repetir("a") == {"ok": False, "mensagem": "Não há consulta para repetir."}
+    iniciar(api)
+    assert api.repetir("a")["mensagem"] == app.EM_ANDAMENTO  # consulta ainda rodando
+    agendadas.pop()()
+    assert respostas == [True]
+    assert [i["estado"] for i in api.estado()["itens"]] == ["Pulada", "Obtida"]
+    assert api.repetir("b")["ok"] is False  # "Obtida" não se repete
+    respostas.clear()
+    assert api.repetir("a") == {"ok": True}
+    assert api.estado()["rodando"] is True
+    assert api.emitir(CNPJ)["ok"] is False  # repetição em andamento
+    agendadas.pop()()
+    assert api.estado()["rodando"] is False
+    assert len(tentativas) == 2
+
+
+def test_tela_tem_botoes_pular_e_repetir():
+    html = app.TELA.read_text(encoding="utf-8")
+    for trecho in ("'Pular'", "'Repetir'", "api.pular(", "api.repetir("):
+        assert trecho in html

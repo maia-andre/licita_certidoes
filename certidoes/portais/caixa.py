@@ -22,7 +22,7 @@ def e_crf_do_cnpj(dados: bytes, cnpj: str) -> bool:
     return TITULO.lower() in " ".join(texto.lower().split()) and contem_cnpj(texto, cnpj)
 
 
-def obter_crf(cnpj, ao_aguardar=None, nao_emitida=None, **opcoes):
+def obter_crf(cnpj, ao_aguardar=None, sinal=None, **opcoes):
     return obter_pelo_navegador(
         cnpj,
         url=URL,
@@ -30,7 +30,7 @@ def obter_crf(cnpj, ao_aguardar=None, nao_emitida=None, **opcoes):
         prefixo="crf",
         nome_portal="Caixa",
         ao_aguardar=ao_aguardar,
-        nao_emitida=nao_emitida,
+        sinal=sinal,
         aceitar=lambda dados: e_crf_do_cnpj(dados, cnpj),
         **opcoes,
     )

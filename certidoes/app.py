@@ -84,16 +84,39 @@ class Api:
             self._rodando = True
             self._execucao = Execucao(self._itens, cnpj)
             execucao = self._execucao
+        self._em_fundo(execucao.rodar)
+        return {"ok": True, "cnpj": formatar(cnpj), "aviso": None if escolhida.matriz else AVISO_FILIAL}
 
+    def _em_fundo(self, funcao):
+        """Roda `funcao` em segundo plano e libera nova consulta ao terminar (já com _rodando=True)."""
         def rodar():
             try:
-                execucao.rodar()
+                funcao()
             finally:
                 with self._trava:
                     self._rodando = False
 
         self._executar(rodar)
-        return {"ok": True, "cnpj": formatar(cnpj), "aviso": None if escolhida.matriz else AVISO_FILIAL}
+
+    def pular(self, chave):
+        """Botão "Pular" do item em andamento (REQ-07)."""
+        with self._trava:
+            execucao = self._execucao
+        return bool(execucao and execucao.pular(chave))
+
+    def repetir(self, chave):
+        """Botão "Repetir" de um item em "Falha técnica", "Não emitida" ou "Pulada" (REQ-14)."""
+        with self._trava:
+            execucao = self._execucao
+            if execucao is None:
+                return {"ok": False, "mensagem": "Não há consulta para repetir."}
+            if self._rodando:
+                return {"ok": False, "mensagem": EM_ANDAMENTO}
+            if not execucao.pode_repetir(chave):
+                return {"ok": False, "mensagem": "Só dá para repetir item em falha técnica, não emitido ou pulado."}
+            self._rodando = True
+        self._em_fundo(lambda: execucao.repetir(chave))
+        return {"ok": True}
 
     def estado(self):
         with self._trava:

@@ -146,13 +146,13 @@ def test_pasta_downloads_no_windows_existe():
 
 
 def test_aviso_de_nao_emitida_encerra_a_espera(tmp_path):
-    from certidoes.portais.comum import NaoEmitida, SinalNaoEmitida
+    from certidoes.portais.comum import NaoEmitida, SinalServidor
 
-    sinal = SinalNaoEmitida()
-    sinal.informar("Informações insuficientes.")
+    sinal = SinalServidor()
+    sinal.informar_nao_emitida("Informações insuficientes.")
     with pytest.raises(NaoEmitida, match="insuficientes"):
         ns.aguardar_arquivo(tmp_path, "*.pdf", time.time(), tempo_limite_s=5, dormir=lambda _: None,
-                            nao_emitida=sinal)
+                            sinal=sinal)
 
 
 def test_arquivo_recusado_pelo_conteudo_nao_e_relido(tmp_path):
@@ -167,3 +167,28 @@ def test_arquivo_recusado_pelo_conteudo_nao_e_relido(tmp_path):
         ns.aguardar_arquivo(tmp_path, "*.pdf", time.time() - 1, tempo_limite_s=0.3, intervalo_s=0.02,
                             aceitar=aceitar)
     assert leituras == [b"%PDF-outro"]
+
+
+def test_servidor_pula_enquanto_espera_o_pdf(tmp_path):
+    from certidoes.portais.comum import Pulada, SinalServidor
+
+    sinal = SinalServidor()
+    sinal.pular()
+    with pytest.raises(Pulada):
+        ns.aguardar_arquivo(tmp_path, "*.pdf", time.time(), tempo_limite_s=5, dormir=lambda _: None, sinal=sinal)
+
+
+def test_primeira_acao_do_servidor_vale():
+    from certidoes.portais.comum import NaoEmitida, Pulada, SinalServidor
+
+    sinal = SinalServidor()
+    sinal.pular()
+    sinal.informar_nao_emitida("ignorada")
+    with pytest.raises(Pulada):
+        sinal.verificar()
+    outro = SinalServidor()
+    outro.informar_nao_emitida("vale")
+    outro.pular()
+    with pytest.raises(NaoEmitida, match="vale"):
+        outro.verificar()
+    SinalServidor().verificar()  # sem ação: não levanta nada

@@ -108,12 +108,39 @@
     });
     naoEmitida.append(rotulo, campo, informar);
 
-    detalhe.append(mensagem, abrir, naoEmitida);
+    const pular = document.createElement('button');
+    pular.type = 'button';
+    pular.textContent = 'Pular';
+    pular.hidden = true;
+    pular.addEventListener('click', async () => {
+      pular.disabled = true;
+      if (!await window.pywebview.api.pular(item.chave)) pular.disabled = false;
+    });
+
+    const repetir = document.createElement('button');
+    repetir.type = 'button';
+    repetir.textContent = 'Repetir';
+    repetir.hidden = true;
+    repetir.addEventListener('click', async () => {
+      const r = await window.pywebview.api.repetir(item.chave);
+      if (!r.ok) {
+        mostrar(r.mensagem, true);
+        return;
+      }
+      travar(true);
+      mostrar('Repetindo: ' + item.nome + '...');
+      acompanhar();
+    });
+
+    detalhe.append(mensagem, abrir, naoEmitida, pular, repetir);
     corpo.appendChild(tr);
-    return { estado, situacao, validade, mensagem, abrir, naoEmitida, informar };
+    return { estado, situacao, validade, mensagem, abrir, naoEmitida, informar, pular, repetir };
   }
 
-  function desenhar(itens) {
+  const EM_CURSO = ['Em andamento', 'Aguardando servidor'];
+  const REPETIVEIS = ['Falha técnica', 'Não emitida', 'Pulada'];
+
+  function desenhar(itens, rodando) {
     for (const item of itens) {
       if (!linhas.has(item.chave)) linhas.set(item.chave, criarLinha(item));
       const l = linhas.get(item.chave);
@@ -126,19 +153,25 @@
       l.mensagem.textContent = item.arquivo ? 'Salva em: ' + item.arquivo : item.mensagem;
       l.abrir.hidden = !item.arquivo;
       l.naoEmitida.hidden = !(item.modo === 'navegador' && item.estado === 'Aguardando servidor');
+      const emCurso = rodando && EM_CURSO.includes(item.estado);
+      if (l.pular.hidden && emCurso) l.pular.disabled = false;
+      l.pular.hidden = !emCurso;
+      l.repetir.hidden = rodando || !REPETIVEIS.includes(item.estado);
+      if (!emCurso && item.estado !== 'Aguardando servidor') l.informar.disabled = false;
     }
     tabela.hidden = itens.length === 0;
   }
 
   function travar(sim) {
     identificar.disabled = sim;
+    for (const l of linhas.values()) l.repetir.disabled = sim;
     for (const b of escolhas.querySelectorAll('button')) b.disabled = sim || b.dataset.bloqueado === 'sim';
   }
 
   async function acompanhar() {
     try {
       const r = await window.pywebview.api.estado();
-      desenhar(r.itens);
+      desenhar(r.itens, r.rodando);
       if (r.rodando) {
         setTimeout(acompanhar, 700);
         return;
