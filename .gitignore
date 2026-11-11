@@ -2,9 +2,9 @@
 __pycache__/
 .pytest_cache/
 
-# Certidões e documentos de fornecedores
+# Certidões e documentos de fornecedores. Os PDFs ficam em ~/Certidoes, fora do repositório.
+# Não ignorar "Certidoes/": no Windows o Git não diferencia maiúsculas e ignoraria o pacote certidoes/.
 *.pdf
-Certidoes/
 
 # Segredos e configuração local
 .env

@@ -3,55 +3,104 @@ import pathlib
 import pytest
 
 import certidoes.app as app
-from certidoes.portais.tst import PortalErro
+from certidoes.portais.comum import PortalErro
+from certidoes.sequencia import Item
 
 CNPJ = "11222333000181"
 
 
-def criar_api(obter=None, abrir=None):
-    return app.Api(obter=obter or (lambda cnpj: pathlib.Path("/tmp/x.pdf")), abrir=abrir or (lambda caminho: None))
+def item(chave, obter):
+    return Item(chave, chave.upper(), f"Portal {chave}", obter, "Instrução {cnpj}")
+
+
+def obtem(caminho):
+    return lambda cnpj, ao_aguardar: pathlib.Path(caminho)
+
+
+def criar_api(itens=None, abrir=None, executar=lambda funcao: funcao()):
+    itens = itens or [item("a", obtem("/tmp/a.pdf")), item("b", obtem("/tmp/b.pdf"))]
+    return app.Api(itens=itens, abrir=abrir or (lambda caminho: None), executar=executar)
 
 
 def test_cnpj_invalido_mostra_erro_sem_consulta_externa():
     chamadas = []
-    api = criar_api(obter=lambda cnpj: chamadas.append(cnpj))
+    api = criar_api(itens=[item("a", lambda cnpj, ao_aguardar: chamadas.append(cnpj))])
     resposta = api.emitir("11.222.333/0001-82")
     assert resposta["ok"] is False
     assert "CNPJ inválido" in resposta["mensagem"]
     assert chamadas == []
+    assert api.estado() == {"rodando": False, "itens": []}
 
 
-def test_emitir_passa_cnpj_normalizado_e_informa_o_arquivo():
+def test_emitir_inicia_a_sequencia_com_o_cnpj_normalizado():
     chamadas = []
 
-    def obter(cnpj):
+    def obter(cnpj, ao_aguardar):
         chamadas.append(cnpj)
-        return pathlib.Path("/tmp/certidao.pdf")
+        return pathlib.Path("/tmp/a.pdf")
 
-    resposta = criar_api(obter=obter).emitir("11.222.333/0001-81")
+    resposta = criar_api(itens=[item("a", obter)]).emitir("11.222.333/0001-81")
+    assert resposta == {"ok": True, "cnpj": "11.222.333/0001-81"}
     assert chamadas == [CNPJ]
-    assert resposta == {"ok": True, "mensagem": "CNDT obtida.", "arquivo": str(pathlib.Path("/tmp/certidao.pdf"))}
 
 
-def test_erro_do_portal_vira_mensagem_para_a_tela():
-    def obter(cnpj):
+def test_emitir_roda_em_segundo_plano():
+    agendadas = []
+    api = criar_api(executar=agendadas.append)
+    assert api.emitir(CNPJ)["ok"] is True
+    estado = api.estado()
+    assert estado["rodando"] is True
+    assert [i["estado"] for i in estado["itens"]] == ["Aguardando", "Aguardando"]
+    agendadas[0]()
+    assert api.estado()["rodando"] is False
+
+
+def test_estado_mostra_cada_item_com_o_arquivo_como_texto():
+    api = criar_api()
+    api.emitir(CNPJ)
+    estado = api.estado()
+    assert estado["rodando"] is False
+    assert [(i["chave"], i["estado"], i["arquivo"]) for i in estado["itens"]] == [
+        ("a", "Obtida", str(pathlib.Path("/tmp/a.pdf"))),
+        ("b", "Obtida", str(pathlib.Path("/tmp/b.pdf"))),
+    ]
+
+
+def test_falha_em_um_item_nao_interrompe_o_outro():
+    def falha(cnpj, ao_aguardar):
         raise PortalErro("Tempo esgotado")
 
-    assert criar_api(obter=obter).emitir(CNPJ) == {"ok": False, "mensagem": "Tempo esgotado"}
-
-
-def test_abrir_pdf_abre_o_ultimo_arquivo_obtido():
-    abertos = []
-    api = criar_api(obter=lambda cnpj: pathlib.Path("/tmp/certidao.pdf"), abrir=abertos.append)
+    api = criar_api(itens=[item("a", falha), item("b", obtem("/tmp/b.pdf"))])
     api.emitir(CNPJ)
-    assert api.abrir_pdf() is True
-    assert abertos == [pathlib.Path("/tmp/certidao.pdf")]
+    a, b = api.estado()["itens"]
+    assert (a["estado"], a["mensagem"], a["arquivo"]) == ("Falha técnica", "Tempo esgotado", None)
+    assert b["estado"] == "Obtida"
+
+
+def test_abrir_pdf_abre_o_arquivo_do_item_escolhido():
+    abertos = []
+    api = criar_api(abrir=abertos.append)
+    api.emitir(CNPJ)
+    assert api.abrir_pdf("b") is True
+    assert abertos == [pathlib.Path("/tmp/b.pdf")]
 
 
 def test_abrir_pdf_sem_certidao_nao_abre_nada():
     abertos = []
-    assert criar_api(abrir=abertos.append).abrir_pdf() is False
+    api = criar_api(abrir=abertos.append)
+    assert api.abrir_pdf("a") is False
+    api.emitir(CNPJ)
+    assert api.abrir_pdf("inexistente") is False
     assert abertos == []
+
+
+def test_abrir_pdf_apagado_devolve_false():
+    def abrir(caminho):
+        raise FileNotFoundError(caminho)
+
+    api = criar_api(abrir=abrir)
+    api.emitir(CNPJ)
+    assert api.abrir_pdf("a") is False
 
 
 def test_abrir_arquivo_no_windows_usa_o_programa_padrao(monkeypatch):
@@ -72,16 +121,23 @@ def test_abrir_arquivo_no_linux_usa_xdg_open(monkeypatch):
 
 
 def test_segunda_consulta_simultanea_e_recusada():
-    respostas = []
-
-    def obter(cnpj):
-        respostas.append(api.emitir(CNPJ))
-        return pathlib.Path("/tmp/certidao.pdf")
-
-    api = criar_api(obter=obter)
+    agendadas = []
+    api = criar_api(executar=agendadas.append)
     assert api.emitir(CNPJ)["ok"] is True
-    assert respostas[0]["ok"] is False
-    assert "andamento" in respostas[0]["mensagem"]
+    segunda = api.emitir(CNPJ)
+    assert segunda["ok"] is False
+    assert "andamento" in segunda["mensagem"]
+    agendadas[0]()
+    assert api.emitir(CNPJ)["ok"] is True
+
+
+def test_nova_consulta_depois_de_erro_inesperado_e_aceita():
+    def quebra(cnpj, ao_aguardar):
+        raise RuntimeError("boom")
+
+    api = criar_api(itens=[item("a", quebra)])
+    api.emitir(CNPJ)
+    assert api.estado()["rodando"] is False
     assert api.emitir(CNPJ)["ok"] is True
 
 
@@ -95,8 +151,8 @@ def test_iniciar_cria_janela_com_a_tela_e_a_api(monkeypatch):
     assert 'id="cnpj"' in criadas["html"]
 
 
-def test_tela_tem_campo_botoes_e_nao_usa_innerhtml():
+def test_tela_tem_campo_botao_tabela_e_nao_usa_innerhtml():
     html = app.TELA.read_text(encoding="utf-8")
-    for elemento in ('id="cnpj"', 'id="emitir"', 'id="abrir"', 'id="status"'):
+    for elemento in ('id="cnpj"', 'id="emitir"', 'id="status"', 'id="itens"'):
         assert elemento in html
     assert "innerHTML" not in html

@@ -33,6 +33,13 @@ def test_preenche_cnpj_e_deixa_o_captcha_para_o_servidor(portal, tmp_path):
     assert portal.registro == {"cnpj": CNPJ, "captcha": "", "foco": "captcha-resposta"}
 
 
+def test_avisa_que_aguarda_o_servidor_depois_de_preencher_o_cnpj(portal, tmp_path):
+    avisos = []
+    obter_cndt(CNPJ, ao_aguardar=lambda: avisos.append("aguardando"), pasta_base=tmp_path,
+               url=portal.url + "/ok", headless=True, tempo_limite_ms=10_000, agora=AGORA)
+    assert avisos == ["aguardando"]
+
+
 def test_captcha_errado_continua_aguardando_ate_o_servidor_acertar(portal, tmp_path):
     arquivo = obter(portal, "/captcha-errado", tmp_path)
     assert arquivo.read_bytes().startswith(b"%PDF")

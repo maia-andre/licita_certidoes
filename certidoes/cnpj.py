@@ -28,3 +28,8 @@ def normalizar(texto) -> str:
     if cnpj[12:] != primeiro + _digito(cnpj[:12] + primeiro):
         raise CnpjInvalido("CNPJ inválido.")
     return cnpj
+
+
+def formatar(cnpj: str) -> str:
+    """'11222333000181' -> '11.222.333/0001-81'. Espera um CNPJ já normalizado."""
+    return f"{cnpj[:2]}.{cnpj[2:5]}.{cnpj[5:8]}/{cnpj[8:12]}-{cnpj[12:]}"

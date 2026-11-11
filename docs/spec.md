@@ -1,6 +1,6 @@
 # Spec: Obtenção assistida de certidões de fornecedores
-Versão: 1.1 — 2026-11-11 | Status: aprovada
-Alterações: 1.1 — Windows passa a ser a plataforma principal (RNF-01).
+Versão: 1.2 — 2026-11-11 | Status: aprovada
+Alterações: 1.1 — Windows passa a ser a plataforma principal (RNF-01). 1.2 — Modo "navegador do servidor" para portais que recusam navegador automatizado (REQ-05, REQ-06, RNF-01, RN-09, CE-13).
 
 ## Objetivo
 Em cada habilitação e a cada nota fiscal de contrato, servidores da Prefeitura de São José dos Campos (pregoeiros, gestores e fiscais) reúnem à mão, em portais diferentes, as certidões de regularidade do fornecedor. O projeto é um programa local em código aberto no qual o servidor digita um CNPJ, resolve apenas os captchas e logins que os portais exigirem e vê, em uma tela simples, a situação e a validade de cada certidão, com o PDF à mão. A primeira versão atende empresas com CNPJ de SP.
@@ -12,8 +12,8 @@ Em cada habilitação e a cada nota fiscal de contrato, servidores da Prefeitura
 - **REQ-02** — Com um CNPJ válido, o programa consulta a BrasilAPI e mostra razão social, UF, situação cadastral e se o CNPJ é de matriz ou filial.
 - **REQ-03** — Se o CNPJ for de filial, a tela mostra o CNPJ da matriz e pede que o servidor escolha qual dos dois consultar.
 - **REQ-04** — Se a UF do CNPJ escolhido não for SP, o programa informa que a empresa não é atendida nesta versão e não abre nenhum portal.
-- **REQ-05** — Para CNPJ atendido, o programa percorre em sequência os itens da RN-01, abrindo um navegador Chromium visível e preenchendo os dados conhecidos.
-- **REQ-06** — Quando um portal exigir captcha, o programa aguarda o servidor resolvê-lo no navegador e continua sozinho depois disso.
+- **REQ-05** — Para CNPJ atendido, o programa percorre em sequência os itens da RN-01. Conforme o modo de acesso do portal (RN-09), abre um Chromium visível e preenche os dados conhecidos, ou abre o portal no navegador do servidor com o CNPJ na área de transferência.
+- **REQ-06** — Quando um portal exigir captcha, o programa aguarda o servidor resolvê-lo no navegador e continua sozinho depois disso. No modo "navegador do servidor", o programa continua quando o PDF do portal chega à pasta Downloads.
 - **REQ-07** — O servidor pode pular o item em andamento, e o programa segue para o próximo.
 - **REQ-08** — O programa guarda localmente o PDF de cada certidão obtida, e a tela oferece um botão para abri-lo.
 - **REQ-09** — A tela mostra cada item da RN-01 com seu estado (RN-02), atualizado durante a execução.
@@ -25,7 +25,7 @@ Em cada habilitação e a cada nota fiscal de contrato, servidores da Prefeitura
 - **REQ-15** — A tela mostra um aviso permanente de que o programa só reúne informações e de que a análise e a decisão cabem ao servidor.
 
 ### Requisitos não-funcionais
-- **RNF-01** — Stack: Python, pywebview para a tela e Playwright com Chromium para os portais. Plataforma principal: Windows, onde o programa será usado; Linux como alternativa.
+- **RNF-01** — Stack: Python, pywebview para a tela, Playwright com Chromium para os portais que aceitam navegador automatizado e o navegador padrão do servidor para os demais (RN-09). Plataforma principal: Windows, onde o programa será usado; Linux como alternativa.
 - **RNF-02** — O uso do programa acontece pela tela, sem digitar comandos durante a consulta.
 - **RNF-03** — O programa não guarda senhas, tokens ou sessões gov.br entre execuções.
 - **RNF-04** — O código de cada portal fica isolado, para que a mudança em um portal não exija alterar os demais.
@@ -51,6 +51,10 @@ Em cada habilitação e a cada nota fiscal de contrato, servidores da Prefeitura
 - **RN-06** — O programa não emite juízo de habilitação, inabilitação ou bloqueio de pagamento. Base: arts. 63, III; 68; 69, II; 91, §4º; e 92, XVI, da Lei 14.133/2021.
 - **RN-07** — A verificação de UF (REQ-04) usa o CNPJ escolhido pelo servidor. Se ele escolher uma filial, a tela avisa que a certidão de falência deve seguir o distribuidor da sede (art. 69, II).
 - **RN-08** — A certidão estadual de SP segue a Resolução Conjunta SFP-PGE nº 1/2026, vigente desde 14/10/2026: o programa pede apenas a Certidão Única, e não as duas antigas.
+- **RN-09** — Modos de acesso aos portais:
+  - **Automatizado:** o programa abre um Chromium visível pelo Playwright, preenche os dados e recebe o PDF. Usado nos portais que aceitam navegador automatizado (TST).
+  - **Navegador do servidor:** o programa abre o portal no navegador padrão do servidor, coloca o CNPJ na área de transferência e mostra o CNPJ na tela. O servidor cola o CNPJ, resolve o captcha e baixa o PDF. O programa vigia a pasta Downloads, reconhece o arquivo pelo nome que o portal usa e o move para a pasta do CNPJ. Usado nos portais que recusam navegador automatizado (Receita Federal: `CaptchaFalhaValidacao`, código 023, testado em 11/11/2026).
+  - O programa nunca tenta esconder a automação de um portal (RN-05).
 
 ## Casos extremos
 - **CE-01** (afeta REQ-01) — CNPJ com dígito verificador inválido: mostrar erro e não fazer consulta externa.
@@ -65,6 +69,7 @@ Em cada habilitação e a cada nota fiscal de contrato, servidores da Prefeitura
 - **CE-10** (afeta REQ-11) — Empresa irregular em portal que não gera certidão: mostrar "Não emitida" com a mensagem do portal, nunca "Falha técnica".
 - **CE-11** (afeta REQ-10) — Certidão emitida com data de validade anterior ao dia atual: mostrar a data e o aviso "Vencida".
 - **CE-12** (afeta REQ-12) — E-mail vazio ou inválido no e-SAJ: não enviar o pedido e pedir correção.
+- **CE-13** (afeta REQ-06, RN-09) — No modo "navegador do servidor", o PDF não chega à pasta Downloads dentro do tempo-limite (o servidor desistiu, o navegador pergunta onde salvar ou salvou em outra pasta): marcar "Falha técnica", informar a pasta vigiada e seguir para o próximo item.
 
 ## Fora de escopo
 - Destino das certidões, dossiê, anexação em processo e integração com sistemas existentes, incluindo o Gestor de Contratos Públicos
@@ -90,6 +95,6 @@ Em cada habilitação e a cada nota fiscal de contrato, servidores da Prefeitura
 
 ## Perguntas em aberto
 1. **Pasta dos PDFs:** esta spec adota uma pasta local por CNPJ apenas para o REQ-08 funcionar. O destino definitivo segue fora de escopo.
-2. **Viabilidade dos portais:** falta testar os seis portais com o navegador real, inclusive se Receita e Caixa aceitam a resolução manual do hCaptcha em navegador automatizado, e quais campos o SIDEB e o e-SAJ pedem. Deve ser a primeira verificação do `/plan`.
+2. **Viabilidade dos portais:** TST aceita navegador automatizado; Receita recusa (RN-09). Falta testar Caixa, SIDEB, e-SAJ e eproc, inclusive quais campos o SIDEB e o e-SAJ pedem.
 3. **eproc para terceiros:** não confirmei se o login gov.br do servidor permite pedir certidão de outro CNPJ. Se não permitir, o item 6 passa a ser apenas um aviso com o link.
 4. **Prazo e custo no TJSP:** não encontrei prazo nem confirmei gratuidade dos itens 5 e 6.

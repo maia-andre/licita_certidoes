@@ -9,47 +9,110 @@
   label { display: block; font-weight: 600; margin-bottom: 6px; }
   input { font: inherit; padding: 8px; width: 100%; box-sizing: border-box; }
   button { font: inherit; padding: 8px 16px; margin-top: 12px; cursor: pointer; }
-  #status { margin-top: 20px; min-height: 48px; overflow-wrap: anywhere; }
+  #status { margin-top: 20px; min-height: 24px; overflow-wrap: anywhere; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  th, td { text-align: left; vertical-align: top; padding: 8px; border-bottom: 1px solid #ddd; }
+  td.detalhe { overflow-wrap: anywhere; font-size: 14px; }
+  td.detalhe button { margin-top: 6px; padding: 4px 12px; }
   .erro { color: #b00020; }
+  .Obtida { color: #1b6e1b; font-weight: 600; }
   [hidden] { display: none; }
 </style>
 </head>
 <body>
-  <h1>Certidão trabalhista (CNDT)</h1>
+  <h1>Certidões do fornecedor</h1>
   <form id="formulario">
     <label for="cnpj">CNPJ da empresa</label>
     <input id="cnpj" autocomplete="off" autofocus>
-    <button id="emitir" type="submit">Emitir CNDT</button>
+    <button id="emitir" type="submit">Emitir certidões</button>
   </form>
   <p id="status" role="status"></p>
-  <button id="abrir" type="button" hidden>Abrir PDF</button>
+  <table id="itens" hidden>
+    <thead><tr><th>Certidão</th><th>Portal</th><th>Situação</th><th>Detalhes</th></tr></thead>
+    <tbody></tbody>
+  </table>
 <script>
   const status = document.getElementById('status');
   const emitir = document.getElementById('emitir');
-  const abrir = document.getElementById('abrir');
+  const tabela = document.getElementById('itens');
+  const corpo = tabela.querySelector('tbody');
+  const linhas = new Map();
 
   function mostrar(texto, erro) {
     status.textContent = texto;
     status.className = erro ? 'erro' : '';
   }
 
+  function celula(linha, classe) {
+    const td = document.createElement('td');
+    if (classe) td.className = classe;
+    linha.appendChild(td);
+    return td;
+  }
+
+  function criarLinha(item) {
+    const tr = document.createElement('tr');
+    celula(tr).textContent = item.nome;
+    celula(tr).textContent = item.portal;
+    const situacao = celula(tr);
+    const detalhe = celula(tr, 'detalhe');
+    const mensagem = document.createElement('div');
+    const abrir = document.createElement('button');
+    abrir.type = 'button';
+    abrir.textContent = 'Abrir PDF';
+    abrir.hidden = true;
+    abrir.addEventListener('click', () => window.pywebview.api.abrir_pdf(item.chave));
+    detalhe.append(mensagem, abrir);
+    corpo.appendChild(tr);
+    return { situacao, mensagem, abrir };
+  }
+
+  function desenhar(itens) {
+    for (const item of itens) {
+      if (!linhas.has(item.chave)) linhas.set(item.chave, criarLinha(item));
+      const l = linhas.get(item.chave);
+      l.situacao.textContent = item.estado;
+      l.situacao.className = item.estado === 'Obtida' ? 'Obtida' : (item.estado === 'Falha técnica' ? 'erro' : '');
+      l.mensagem.textContent = item.arquivo ? 'Salva em: ' + item.arquivo : item.mensagem;
+      l.abrir.hidden = !item.arquivo;
+    }
+    tabela.hidden = itens.length === 0;
+  }
+
+  async function acompanhar() {
+    try {
+      const r = await window.pywebview.api.estado();
+      desenhar(r.itens);
+      if (r.rodando) {
+        setTimeout(acompanhar, 700);
+        return;
+      }
+      mostrar('Consulta concluída.');
+    } catch (erro) {
+      mostrar('Erro inesperado: ' + erro, true);
+    }
+    emitir.disabled = false;
+  }
+
   document.getElementById('formulario').addEventListener('submit', async (evento) => {
     evento.preventDefault();
     emitir.disabled = true;
-    abrir.hidden = true;
-    mostrar('Na janela que vai abrir, digite os caracteres da imagem e clique em "Emitir Certidão".');
     try {
       const r = await window.pywebview.api.emitir(document.getElementById('cnpj').value);
-      mostrar(r.ok ? r.mensagem + ' Salva em: ' + r.arquivo : r.mensagem, !r.ok);
-      abrir.hidden = !r.ok;
+      if (!r.ok) {
+        mostrar(r.mensagem, true);
+        emitir.disabled = false;
+        return;
+      }
+      corpo.replaceChildren();
+      linhas.clear();
+      mostrar('Consultando o CNPJ ' + r.cnpj + '...');
+      acompanhar();
     } catch (erro) {
       mostrar('Erro inesperado: ' + erro, true);
-    } finally {
       emitir.disabled = false;
     }
   });
-
-  abrir.addEventListener('click', () => window.pywebview.api.abrir_pdf());
 </script>
 </body>
 </html>

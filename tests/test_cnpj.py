@@ -44,3 +44,10 @@ def test_recusa_cnpj_invalido(entrada):
 def test_recusa_entrada_que_nao_e_texto(entrada):
     with pytest.raises(CnpjInvalido):
         normalizar(entrada)
+
+
+def test_formata_cnpj_normalizado():
+    from certidoes.cnpj import formatar
+
+    assert formatar("11222333000181") == "11.222.333/0001-81"
+    assert formatar("12ABC34501DE35") == "12.ABC.345/01DE-35"
