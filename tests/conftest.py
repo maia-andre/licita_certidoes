@@ -100,3 +100,34 @@ def portal():
     yield servidor
     servidor.shutdown()
     servidor.server_close()
+
+
+def pdf_com_texto(*linhas: str) -> bytes:
+    """PDF mínimo de uma página com as linhas em Helvetica, legível pela pypdf. Só ASCII."""
+    def escapar(texto):
+        return texto.replace("\\", "\\\\").replace("(", "\(").replace(")", "\)")
+
+    comandos = ["BT", "/F1 11 Tf", "14 TL", "50 780 Td"]
+    for linha in linhas:
+        comandos.append(f"({escapar(linha)}) Tj T*")
+    comandos.append("ET")
+    conteudo = "\n".join(comandos).encode("ascii")
+    objetos = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] "
+        b"/Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>",
+        b"<< /Length " + str(len(conteudo)).encode() + b" >>\nstream\n" + conteudo + b"\nendstream",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ]
+    saida = bytearray(b"%PDF-1.4\n")
+    posicoes = []
+    for numero, objeto in enumerate(objetos, start=1):
+        posicoes.append(len(saida))
+        saida += f"{numero} 0 obj\n".encode() + objeto + b"\nendobj\n"
+    inicio_xref = len(saida)
+    saida += f"xref\n0 {len(objetos) + 1}\n0000000000 65535 f \n".encode()
+    for posicao in posicoes:
+        saida += f"{posicao:010d} 00000 n \n".encode()
+    saida += f"trailer\n<< /Size {len(objetos) + 1} /Root 1 0 R >>\nstartxref\n{inicio_xref}\n%%EOF\n".encode()
+    return bytes(saida)

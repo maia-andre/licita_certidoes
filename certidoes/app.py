@@ -65,6 +65,14 @@ class Api:
             item["arquivo"] = str(item["arquivo"]) if item["arquivo"] else None
         return {"rodando": rodando, "itens": itens}
 
+    def informar_nao_emitida(self, chave, mensagem=""):
+        """Botão "O portal não emitiu" (REQ-11, modo navegador do servidor)."""
+        with self._trava:
+            execucao = self._execucao
+        if execucao is None or not isinstance(mensagem, str):
+            return False
+        return execucao.informar_nao_emitida(chave, mensagem)
+
     def abrir_pdf(self, chave):
         with self._trava:
             execucao = self._execucao

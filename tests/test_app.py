@@ -77,6 +77,27 @@ def test_falha_em_um_item_nao_interrompe_o_outro():
     assert b["estado"] == "Obtida"
 
 
+def test_informar_nao_emitida_repassa_para_o_item_que_aguarda_o_servidor():
+    from certidoes.portais.comum import NaoEmitida
+    from certidoes.sequencia import NAVEGADOR
+
+    respostas = []
+
+    def obter(cnpj, ao_aguardar, nao_emitida):
+        ao_aguardar()
+        respostas.append(api.informar_nao_emitida("a", 123))  # mensagem que não é texto é recusada
+        respostas.append(api.informar_nao_emitida("a", "Empregador não cadastrado."))
+        raise NaoEmitida(nao_emitida.mensagem)
+
+    api = criar_api(itens=[Item("a", "A", "Portal a", obter, "Instrução", NAVEGADOR)])
+    assert api.informar_nao_emitida("a", "") is False  # sem consulta
+    api.emitir(CNPJ)
+    item_a = api.estado()["itens"][0]
+    assert respostas == [False, True]
+    assert (item_a["estado"], item_a["modo"]) == ("Não emitida", "navegador")
+    assert "Empregador não cadastrado." in item_a["mensagem"]
+
+
 def test_abrir_pdf_abre_o_arquivo_do_item_escolhido():
     abertos = []
     api = criar_api(abrir=abertos.append)
@@ -153,6 +174,7 @@ def test_iniciar_cria_janela_com_a_tela_e_a_api(monkeypatch):
 
 def test_tela_tem_campo_botao_tabela_e_nao_usa_innerhtml():
     html = app.TELA.read_text(encoding="utf-8")
-    for elemento in ('id="cnpj"', 'id="emitir"', 'id="status"', 'id="itens"'):
+    for elemento in ('id="cnpj"', 'id="emitir"', 'id="status"', 'id="itens"', "O portal não emitiu",
+                     "Mensagem do portal (opcional)", "informar_nao_emitida"):
         assert elemento in html
     assert "innerHTML" not in html

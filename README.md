@@ -10,7 +10,7 @@ Programa local e gratuito para pregoeiros, gestores e fiscais de contratos.
 ![Python](https://img.shields.io/badge/Python-3-3776AB?logo=python&logoColor=white)
 ![Playwright](https://img.shields.io/badge/Playwright-Chromium-2EAD33?logo=playwright&logoColor=white)
 ![Plataforma](https://img.shields.io/badge/plataforma-Windows%20%7C%20Linux-555)
-![Testes](https://img.shields.io/badge/testes-66%20passando-brightgreen)
+![Testes](https://img.shields.io/badge/testes-82%20passando-brightgreen)
 
 </div>
 
@@ -39,11 +39,11 @@ flowchart LR
 O programa abre cada portal de um de dois jeitos:
 
 - **Automatizado:** abre um Chromium à parte, preenche o CNPJ e recebe o PDF. O servidor só resolve o captcha. Usado no TST.
-- **No navegador do servidor:** alguns portais recusam navegador automatizado. Nesses, o programa abre o portal no navegador normal do servidor e copia o CNPJ. O servidor cola, resolve o captcha e baixa o PDF, e o programa o recolhe da pasta Downloads. Usado na Receita Federal.
+- **No navegador do servidor:** alguns portais recusam navegador automatizado. Nesses, o programa abre o portal no navegador normal do servidor e copia o CNPJ. O servidor cola, resolve o captcha e baixa o PDF, e o programa o recolhe da pasta Downloads. Usado na Receita Federal e na Caixa.
 
 ## O que já funciona
 
-Hoje o programa emite **duas** certidões em sequência, a CND federal e a CNDT. A primeira sequência real foi feita no Windows em 11/11/2026.
+Hoje o programa emite **três** certidões em sequência: a CND federal, o CRF do FGTS e a CNDT. A primeira sequência real foi feita no Windows em 11/11/2026.
 
 - Valida o CNPJ, numérico ou alfanumérico, antes de qualquer consulta externa.
 - Mostra cada certidão numa tabela, com o estado atualizado durante a consulta.
@@ -59,7 +59,7 @@ A primeira versão atende empresas com CNPJ de SP.
 |---|---|---|
 | CND federal | Receita Federal | ✅ Funcionando (no navegador do servidor) |
 | CNDT | TST | ✅ Funcionando |
-| CRF FGTS | Caixa | Planejada |
+| CRF FGTS | Caixa | ✅ Funcionando (no navegador do servidor) |
 | Certidão Única estadual | SIDEB (Sefaz-SP/PGE-SP) | Planejada |
 | Falência, concordatas e recuperações | e-SAJ/TJSP | Planejada, com pedido assistido |
 | Complemento cível de primeiro grau | eproc/TJSP | Planejada, com pedido assistido |
@@ -118,8 +118,8 @@ sudo apt install python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1
 |---|---|---|---|
 | 01 | CNDT de ponta a ponta | CNPJ, captcha, PDF salvo e aberto pela tela | ✅ Concluído |
 | 02 | CND federal e sequência de itens | CNDT e CND em sequência, com o estado de cada item | ✅ Concluído |
-| 03 | CRF FGTS | CRF obtido ou "Não emitida" com a mensagem do portal | ⏭️ Próximo |
-| 04 | Situação e validade na tela | Dados lidos do PDF, ou "Conferir no PDF" | Pendente |
+| 03 | CRF FGTS | CRF obtido ou "Não emitida" com a mensagem do portal | ✅ Concluído |
+| 04 | Situação e validade na tela | Dados lidos do PDF, ou "Conferir no PDF" | ⏭️ Próximo |
 | 05 | Identificação da empresa | Dados da BrasilAPI, escolha de filial e recusa fora de SP | Pendente |
 | 06 | Certidão Única estadual | Emissão pelo SIDEB | Pendente |
 | 07 | Pular e repetir itens | Refazer só o item que falhou | Pendente |
@@ -127,7 +127,7 @@ sudo apt install python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1
 | 09 | Complemento no eproc | Pedido com gov.br e os seis itens na tela | Pendente |
 | 10 | Validação com CNPJs reais | Resultado de 10 CNPJs de SP conferido com os PDFs | Pendente |
 
-O incremento 02 confirmou que a Receita recusa navegador automatizado. Por isso, a CND federal é emitida no navegador normal do servidor, sem contornar a recusa. A Caixa também usa hCaptcha e deve seguir o mesmo caminho; o incremento 03 começa testando isso.
+Receita e Caixa recusam navegador automatizado (a Caixa bloqueia já no primeiro acesso). Por isso, a CND federal e o CRF são emitidos no navegador normal do servidor, sem contornar a recusa. Quando o portal não emite, o servidor informa pela tela, com o botão "O portal não emitiu".
 
 ## Documentação
 

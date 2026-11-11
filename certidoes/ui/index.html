@@ -16,6 +16,11 @@
   td.detalhe button { margin-top: 6px; padding: 4px 12px; }
   .erro { color: #b00020; }
   .Obtida { color: #1b6e1b; font-weight: 600; }
+  .alerta { color: #8a4b00; font-weight: 600; }
+  .nao-emitida { margin-top: 10px; }
+  .nao-emitida label { font-weight: 400; font-size: 13px; margin-bottom: 4px; }
+  .nao-emitida textarea { font: inherit; font-size: 14px; width: 100%; box-sizing: border-box; padding: 6px; }
+  .nao-emitida button { margin-top: 6px; }
   [hidden] { display: none; }
 </style>
 </head>
@@ -62,9 +67,30 @@
     abrir.textContent = 'Abrir PDF';
     abrir.hidden = true;
     abrir.addEventListener('click', () => window.pywebview.api.abrir_pdf(item.chave));
-    detalhe.append(mensagem, abrir);
+
+    const naoEmitida = document.createElement('div');
+    naoEmitida.className = 'nao-emitida';
+    naoEmitida.hidden = true;
+    const rotulo = document.createElement('label');
+    rotulo.textContent = 'Mensagem do portal (opcional)';
+    rotulo.htmlFor = 'msg-' + item.chave;
+    const campo = document.createElement('textarea');
+    campo.id = 'msg-' + item.chave;
+    campo.rows = 2;
+    campo.maxLength = 1000;
+    const informar = document.createElement('button');
+    informar.type = 'button';
+    informar.textContent = 'O portal não emitiu';
+    informar.addEventListener('click', async () => {
+      informar.disabled = true;
+      const ok = await window.pywebview.api.informar_nao_emitida(item.chave, campo.value);
+      if (!ok) informar.disabled = false;
+    });
+    naoEmitida.append(rotulo, campo, informar);
+
+    detalhe.append(mensagem, abrir, naoEmitida);
     corpo.appendChild(tr);
-    return { situacao, mensagem, abrir };
+    return { situacao, mensagem, abrir, naoEmitida, informar };
   }
 
   function desenhar(itens) {
@@ -72,9 +98,10 @@
       if (!linhas.has(item.chave)) linhas.set(item.chave, criarLinha(item));
       const l = linhas.get(item.chave);
       l.situacao.textContent = item.estado;
-      l.situacao.className = item.estado === 'Obtida' ? 'Obtida' : (item.estado === 'Falha técnica' ? 'erro' : '');
+      l.situacao.className = {'Obtida': 'Obtida', 'Falha técnica': 'erro', 'Não emitida': 'alerta'}[item.estado] || '';
       l.mensagem.textContent = item.arquivo ? 'Salva em: ' + item.arquivo : item.mensagem;
       l.abrir.hidden = !item.arquivo;
+      l.naoEmitida.hidden = !(item.modo === 'navegador' && item.estado === 'Aguardando servidor');
     }
     tabela.hidden = itens.length === 0;
   }

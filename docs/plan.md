@@ -1,6 +1,6 @@
 # Plan: Obtenção assistida de certidões de fornecedores
-Spec: docs/spec.md, versão 1.2 | Gerado: 2026-11-06
-Progresso: 2/10 incrementos concluídos
+Spec: docs/spec.md, versão 1.3 | Gerado: 2026-11-06
+Progresso: 3/10 incrementos concluídos
 
 ## Backlog
 
@@ -17,11 +17,10 @@ Depende de: INC-01
 Entrega verificável: um CNPJ real percorre CND federal (navegador do servidor) e CNDT (automatizado) em sequência, com o estado de cada item na tela, e uma falha em um item aparece como "Falha técnica" sem interromper o outro.
 
 ### INC-03 — CRF FGTS e certidão não emitida
-Status: pendente
+Status: concluído (2026-11-11)
 Itens da spec: REQ-11 | CE-10
 Depende de: INC-02
-Entrega verificável: um CNPJ real obtém o CRF, e uma empresa sem CRF disponível aparece como "Não emitida" com a mensagem do portal.
-Primeiro passo: testar se a Caixa aceita navegador automatizado; se recusar, usar o modo "navegador do servidor" (RN-09).
+Entrega verificável: um CNPJ real obtém o CRF (navegador do servidor, PDF salvo pela opção "Imprimir"), e o servidor consegue marcar um item como "Não emitida" com a mensagem do portal.
 
 ### INC-04 — Situação e validade na tela
 Status: pendente
@@ -72,3 +71,4 @@ O INC-02 antecipa o maior risco técnico (hCaptcha em navegador automatizado). S
 
 ## Revisões
 - **2026-11-11 — Receita recusa navegador automatizado.** No Chromium do Playwright, o hCaptcha passa, mas a API da Receita responde `CaptchaFalhaValidacao` (código 023) em "Emitir" e em "Consultar". No navegador normal do servidor, o mesmo CNPJ funcionou. Decisão aprovada: criar o modo "navegador do servidor" (spec 1.2, RN-09) para a CND federal, sem tentar contornar a recusa. O TST continua automatizado.
+- **2026-11-11 — Caixa bloqueia navegador automatizado.** Um único acesso de leitura em Chromium headless foi barrado pelo bot manager da Caixa (Radware/ShieldSquare). Sem novas tentativas automatizadas, para não marcar o IP da prefeitura. Teste de controle no navegador normal: o CRF é uma página, salva como PDF pela opção "Imprimir", com nome livre. Decisão aprovada (spec 1.3): CRF no modo navegador do servidor, PDF reconhecido pelo texto, e botão "O portal não emitiu" com campo opcional para a mensagem.

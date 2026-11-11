@@ -143,3 +143,27 @@ def test_espera_o_tamanho_do_arquivo_parar_de_mudar(tmp_path):
 @pytest.mark.skipif(sys.platform != "win32", reason="pasta conhecida do Windows")
 def test_pasta_downloads_no_windows_existe():
     assert ns.pasta_downloads().is_dir()
+
+
+def test_aviso_de_nao_emitida_encerra_a_espera(tmp_path):
+    from certidoes.portais.comum import NaoEmitida, SinalNaoEmitida
+
+    sinal = SinalNaoEmitida()
+    sinal.informar("Informações insuficientes.")
+    with pytest.raises(NaoEmitida, match="insuficientes"):
+        ns.aguardar_arquivo(tmp_path, "*.pdf", time.time(), tempo_limite_s=5, dormir=lambda _: None,
+                            nao_emitida=sinal)
+
+
+def test_arquivo_recusado_pelo_conteudo_nao_e_relido(tmp_path):
+    (tmp_path / "outro.pdf").write_bytes(b"%PDF-outro")
+    leituras = []
+
+    def aceitar(dados):
+        leituras.append(dados)
+        return False
+
+    with pytest.raises(PortalErro, match="Tempo esgotado"):
+        ns.aguardar_arquivo(tmp_path, "*.pdf", time.time() - 1, tempo_limite_s=0.3, intervalo_s=0.02,
+                            aceitar=aceitar)
+    assert leituras == [b"%PDF-outro"]

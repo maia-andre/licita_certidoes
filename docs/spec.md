@@ -1,6 +1,6 @@
 # Spec: Obtenção assistida de certidões de fornecedores
-Versão: 1.2 — 2026-11-11 | Status: aprovada
-Alterações: 1.1 — Windows passa a ser a plataforma principal (RNF-01). 1.2 — Modo "navegador do servidor" para portais que recusam navegador automatizado (REQ-05, REQ-06, RNF-01, RN-09, CE-13).
+Versão: 1.3 — 2026-11-11 | Status: aprovada
+Alterações: 1.1 — Windows passa a ser a plataforma principal (RNF-01). 1.2 — Modo "navegador do servidor" para portais que recusam navegador automatizado (REQ-05, REQ-06, RNF-01, RN-09, CE-13). 1.3 — Caixa também no modo navegador do servidor; reconhecimento do PDF pelo conteúdo; "Não emitida" informada pelo servidor nesse modo (REQ-11, RN-09).
 
 ## Objetivo
 Em cada habilitação e a cada nota fiscal de contrato, servidores da Prefeitura de São José dos Campos (pregoeiros, gestores e fiscais) reúnem à mão, em portais diferentes, as certidões de regularidade do fornecedor. O projeto é um programa local em código aberto no qual o servidor digita um CNPJ, resolve apenas os captchas e logins que os portais exigirem e vê, em uma tela simples, a situação e a validade de cada certidão, com o PDF à mão. A primeira versão atende empresas com CNPJ de SP.
@@ -18,7 +18,7 @@ Em cada habilitação e a cada nota fiscal de contrato, servidores da Prefeitura
 - **REQ-08** — O programa guarda localmente o PDF de cada certidão obtida, e a tela oferece um botão para abri-lo.
 - **REQ-09** — A tela mostra cada item da RN-01 com seu estado (RN-02), atualizado durante a execução.
 - **REQ-10** — Para certidão obtida, o programa lê o texto do PDF e mostra a situação e a data de validade (RN-03 e RN-04).
-- **REQ-11** — Quando o portal não emitir a certidão, a tela mostra o estado "Não emitida" e a mensagem informada pelo portal.
+- **REQ-11** — Quando o portal não emitir a certidão, a tela mostra o estado "Não emitida" e a mensagem informada pelo portal. No modo "navegador do servidor", o programa não vê o portal: a tela oferece o botão "O portal não emitiu" e um campo opcional para o servidor colar a mensagem do portal.
 - **REQ-12** — Na falência pelo e-SAJ, o programa preenche o pedido com os dados conhecidos e o e-mail informado pelo servidor, aguarda o captcha e, enviado o pedido, marca o item como "Pedido feito: acompanhar".
 - **REQ-13** — Na falência pelo eproc, o programa abre o portal para o servidor entrar com o gov.br e fazer o pedido. Quando o servidor confirmar na tela, o item fica como "Pedido feito: acompanhar".
 - **REQ-14** — O servidor pode repetir apenas um item que tenha ficado em "Falha técnica", "Não emitida" ou "Pulada", sem refazer os demais.
@@ -53,7 +53,9 @@ Em cada habilitação e a cada nota fiscal de contrato, servidores da Prefeitura
 - **RN-08** — A certidão estadual de SP segue a Resolução Conjunta SFP-PGE nº 1/2026, vigente desde 14/10/2026: o programa pede apenas a Certidão Única, e não as duas antigas.
 - **RN-09** — Modos de acesso aos portais:
   - **Automatizado:** o programa abre um Chromium visível pelo Playwright, preenche os dados e recebe o PDF. Usado nos portais que aceitam navegador automatizado (TST).
-  - **Navegador do servidor:** o programa abre o portal no navegador padrão do servidor, coloca o CNPJ na área de transferência e mostra o CNPJ na tela. O servidor cola o CNPJ, resolve o captcha e baixa o PDF. O programa vigia a pasta Downloads, reconhece o arquivo pelo nome que o portal usa e o move para a pasta do CNPJ. Usado nos portais que recusam navegador automatizado (Receita Federal: `CaptchaFalhaValidacao`, código 023, testado em 11/11/2026).
+  - **Navegador do servidor:** o programa abre o portal no navegador padrão do servidor, coloca o CNPJ na área de transferência e mostra o CNPJ na tela. O servidor cola o CNPJ, resolve o captcha e baixa o PDF. O programa vigia a pasta Downloads, reconhece o arquivo pelo nome que o portal usa ou pelo texto do PDF (tipo de certidão e CNPJ) e o move para a pasta do CNPJ. Usado nos portais que recusam navegador automatizado:
+    - Receita Federal: `CaptchaFalhaValidacao`, código 023, testado em 11/11/2026. PDF reconhecido pelo nome `Certidao-<CNPJ>.pdf`.
+    - Caixa: bloqueio de robôs (Radware/ShieldSquare) já no primeiro acesso, testado em 11/11/2026. O CRF é uma página que o servidor salva como PDF pela opção "Imprimir"; o PDF é reconhecido pelo texto "Certificado de Regularidade do FGTS" e pelo CNPJ. Não repetir acessos automatizados à Caixa: a página de bloqueio registra o IP da rede da prefeitura.
   - O programa nunca tenta esconder a automação de um portal (RN-05).
 
 ## Casos extremos

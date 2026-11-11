@@ -12,7 +12,7 @@ INSTRUCAO = (
 )
 
 
-def obter_cnd(cnpj, ao_aguardar=None, **opcoes):
+def obter_cnd(cnpj, ao_aguardar=None, nao_emitida=None, **opcoes):
     """O portal salva o PDF como Certidao-<CNPJ>.pdf (ou com sufixo, se já existir)."""
     return obter_pelo_navegador(
         cnpj,
@@ -21,5 +21,6 @@ def obter_cnd(cnpj, ao_aguardar=None, **opcoes):
         prefixo="cnd",
         nome_portal="Receita Federal",
         ao_aguardar=ao_aguardar,
+        nao_emitida=nao_emitida,
         **opcoes,
     )
