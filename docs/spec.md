@@ -1,5 +1,6 @@
 # Spec: Obtenção assistida de certidões de fornecedores
-Versão: 1 — 2026-11-06 | Status: aprovada
+Versão: 1.1 — 2026-11-11 | Status: aprovada
+Alterações: 1.1 — Windows passa a ser a plataforma principal (RNF-01).
 
 ## Objetivo
 Em cada habilitação e a cada nota fiscal de contrato, servidores da Prefeitura de São José dos Campos (pregoeiros, gestores e fiscais) reúnem à mão, em portais diferentes, as certidões de regularidade do fornecedor. O projeto é um programa local em código aberto no qual o servidor digita um CNPJ, resolve apenas os captchas e logins que os portais exigirem e vê, em uma tela simples, a situação e a validade de cada certidão, com o PDF à mão. A primeira versão atende empresas com CNPJ de SP.
@@ -24,7 +25,7 @@ Em cada habilitação e a cada nota fiscal de contrato, servidores da Prefeitura
 - **REQ-15** — A tela mostra um aviso permanente de que o programa só reúne informações e de que a análise e a decisão cabem ao servidor.
 
 ### Requisitos não-funcionais
-- **RNF-01** — Stack: Python, pywebview para a tela e Playwright com Chromium para os portais, rodando em Linux nesta etapa.
+- **RNF-01** — Stack: Python, pywebview para a tela e Playwright com Chromium para os portais. Plataforma principal: Windows, onde o programa será usado; Linux como alternativa.
 - **RNF-02** — O uso do programa acontece pela tela, sem digitar comandos durante a consulta.
 - **RNF-03** — O programa não guarda senhas, tokens ou sessões gov.br entre execuções.
 - **RNF-04** — O código de cada portal fica isolado, para que a mudança em um portal não exija alterar os demais.

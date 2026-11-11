@@ -9,8 +9,8 @@ Programa local e gratuito para pregoeiros, gestores e fiscais de contratos.
 ![Status](https://img.shields.io/badge/status-em%20constru%C3%A7%C3%A3o-orange)
 ![Python](https://img.shields.io/badge/Python-3-3776AB?logo=python&logoColor=white)
 ![Playwright](https://img.shields.io/badge/Playwright-Chromium-2EAD33?logo=playwright&logoColor=white)
-![Plataforma](https://img.shields.io/badge/plataforma-Linux-555)
-![Testes](https://img.shields.io/badge/testes-36%20passando-brightgreen)
+![Plataforma](https://img.shields.io/badge/plataforma-Windows%20%7C%20Linux-555)
+![Testes](https://img.shields.io/badge/testes-39%20passando-brightgreen)
 
 </div>
 
@@ -40,7 +40,7 @@ Hoje o programa emite **uma** certidão, a CNDT do TST. A primeira emissão real
 
 - Valida o CNPJ, numérico ou alfanumérico, antes de qualquer consulta externa.
 - Abre o portal do TST em um Chromium visível e preenche o CNPJ.
-- Espera o servidor resolver o captcha e guarda o PDF em `~/Certidoes/<CNPJ>/`.
+- Espera o servidor resolver o captcha e guarda o PDF na pasta `Certidoes\<CNPJ>\` do usuário (no Windows, `C:\Users\<usuário>\Certidoes\`).
 - Abre o PDF pela própria tela.
 
 ## Certidões previstas
@@ -66,24 +66,41 @@ A primeira versão atende empresas com CNPJ de SP.
 
 ## Como rodar
 
+### Windows (plataforma principal)
+
+Testado no Windows 11 com Python 3.14. A tela usa o WebView2 do Edge, que já vem com o sistema.
+
+```powershell
+git clone https://github.com/maia-andre/licita_certidoes.git
+cd licita_certidoes
+
+py -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.txt
+.venv\Scripts\python -m playwright install chromium
+
+.venv\Scripts\python -m certidoes
+```
+
+Use `py`, e não `python`: no Windows, `python` pode abrir o atalho da Microsoft Store em vez do Python instalado.
+
+Para rodar os testes, que usam um portal falso local e não acessam os portais reais:
+
+```powershell
+.venv\Scripts\python -m pytest -q
+```
+
+### Linux (alternativa)
+
 Testado no Debian. A tela usa o GTK e o WebKit do sistema, por isso o venv precisa do Python do sistema e de `--system-site-packages`.
 
 ```bash
 sudo apt install python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1
-
-git clone https://github.com/maia-andre/licita_certidoes.git
-cd licita_certidoes
 
 /usr/bin/python3 -m venv --system-site-packages .venv
 .venv/bin/pip install -r requirements.txt
 .venv/bin/python -m playwright install chromium
 
 .venv/bin/python -m certidoes
-```
-
-Para rodar os testes, que usam um portal falso local e não acessam os portais reais:
-
-```bash
 .venv/bin/python -m pytest -q
 ```
 
@@ -91,7 +108,7 @@ Para rodar os testes, que usam um portal falso local e não acessam os portais r
 
 | # | Incremento | Entrega | Situação |
 |---|---|---|---|
-| 01 | CNDT de ponta a ponta | CNPJ, captcha, PDF salvo e aberto pela tela | 🔨 Verificado, falta a revisão final |
+| 01 | CNDT de ponta a ponta | CNPJ, captcha, PDF salvo e aberto pela tela | ✅ Concluído |
 | 02 | CND federal e sequência de itens | CNDT e CND em sequência, com o estado de cada item | ⏭️ Próximo |
 | 03 | CRF FGTS | CRF obtido ou "Não emitida" com a mensagem do portal | Pendente |
 | 04 | Situação e validade na tela | Dados lidos do PDF, ou "Conferir no PDF" | Pendente |

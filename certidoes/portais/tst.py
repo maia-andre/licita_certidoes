@@ -37,7 +37,10 @@ def obter_cndt(
 ) -> pathlib.Path:
     """Abre o portal e espera o servidor resolver o captcha e emitir a certidão."""
     with sync_playwright() as p:
-        navegador = p.chromium.launch(headless=headless)
+        try:
+            navegador = p.chromium.launch(headless=headless)
+        except PlaywrightError as erro:
+            raise PortalErro("Não foi possível abrir o navegador Chromium.") from erro
         try:
             pagina = navegador.new_context(accept_downloads=True).new_page()
             try:

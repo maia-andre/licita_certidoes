@@ -21,3 +21,27 @@ Nenhuma.
 - **Resolução do captcha:** depende de uma pessoa (RN-05). Nesta rodada, a emissão bem-sucedida não foi repetida; a evidência é o PDF real emitido pelo servidor em 2026-11-06.
 - **Abrir PDF:** confirmado pelo processo do visualizador com o arquivo, não por conferência visual do servidor.
 - **CNPJ alfanumérico no portal real:** não há CNPJ alfanumérico real para testar.
+
+---
+
+# Verify report — 2026-11-11 (Windows)
+Incremento: INC-01 — CNDT de ponta a ponta | Plataforma: Windows 11, Python 3.14.6, pywebview 6.2.1 (WebView2)
+Suíte de testes: 39 passando (`.venv\Scripts\python -m pytest -q`)
+
+## Mudanças desta rodada
+- `certidoes/app.py`: "Abrir PDF" usa `os.startfile` no Windows e `xdg-open` no Linux.
+- `certidoes/portais/tst.py`: falha ao abrir o Chromium vira `PortalErro` com mensagem clara, em vez de erro cru na tela.
+- `tests/test_app.py`: caminho esperado independente do sistema; testes de abertura no Windows e no Linux.
+
+## Fluxos dirigidos
+| Item | Fluxo exercitado | Evidência | Resultado |
+|------|------------------|-----------|-----------|
+| RNF-01 | Janela pywebview real no Windows | Script descartável: `webview.guilib` = `winforms`, `window.pywebview.api.emitir` exposto | FUNCIONA |
+| CE-01 | Tela: dígito verificador errado no Windows | Status `CNPJ inválido.` com classe `erro`, 0 chamadas ao portal | FUNCIONA |
+| REQ-06 | Emissão real no portal do TST, captcha resolvido pelo servidor | PDF salvo às 15:09 em `Certidoes\<CNPJ>\cndt-20261111-150920.pdf` (86 KB, cabeçalho `%PDF-1.5`) | FUNCIONA |
+| REQ-08 | Clique em "Abrir PDF" | O servidor confirmou que o PDF abriu no leitor padrão e é a CNDT | FUNCIONA |
+
+## Revisão final — pontos menores não corrigidos
+- Se a janela da tela for fechada durante uma consulta, o processo continua até o PDF ser emitido, o Chromium ser fechado ou o tempo-limite de 5 min esgotar (as chamadas do pywebview rodam em threads não daemon).
+- "Abrir PDF" com o arquivo apagado no meio do caminho falha em silêncio.
+- Se o campo do captcha do TST mudar de id, a mensagem será "Tempo esgotado" em vez de "formulário mudou".

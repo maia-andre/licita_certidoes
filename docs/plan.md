@@ -1,11 +1,11 @@
 # Plan: Obtenção assistida de certidões de fornecedores
-Spec: docs/spec.md, versão 1 | Gerado: 2026-11-06
-Progresso: 0/10 incrementos concluídos
+Spec: docs/spec.md, versão 1.1 | Gerado: 2026-11-06
+Progresso: 1/10 incrementos concluídos
 
 ## Backlog
 
 ### INC-01 — CNDT de ponta a ponta
-Status: em construção
+Status: concluído (2026-11-11)
 Itens da spec: REQ-01, REQ-06, REQ-08 | RNF-01, RNF-02, RNF-06 | RN-05 | CE-01
 Depende de: —
 Entrega verificável: na tela pywebview, um CNPJ real abre o portal do TST no Chromium, o servidor resolve o captcha e o PDF da CNDT fica salvo e pode ser aberto pela tela.

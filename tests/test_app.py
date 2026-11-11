@@ -30,7 +30,7 @@ def test_emitir_passa_cnpj_normalizado_e_informa_o_arquivo():
 
     resposta = criar_api(obter=obter).emitir("11.222.333/0001-81")
     assert chamadas == [CNPJ]
-    assert resposta == {"ok": True, "mensagem": "CNDT obtida.", "arquivo": "/tmp/certidao.pdf"}
+    assert resposta == {"ok": True, "mensagem": "CNDT obtida.", "arquivo": str(pathlib.Path("/tmp/certidao.pdf"))}
 
 
 def test_erro_do_portal_vira_mensagem_para_a_tela():
@@ -52,6 +52,23 @@ def test_abrir_pdf_sem_certidao_nao_abre_nada():
     abertos = []
     assert criar_api(abrir=abertos.append).abrir_pdf() is False
     assert abertos == []
+
+
+def test_abrir_arquivo_no_windows_usa_o_programa_padrao(monkeypatch):
+    abertos = []
+    monkeypatch.setattr(app.sys, "platform", "win32")
+    monkeypatch.setattr(app.os, "startfile", abertos.append, raising=False)
+    monkeypatch.setattr(app.subprocess, "Popen", lambda *a, **kw: pytest.fail("não deveria chamar xdg-open"))
+    app._abrir_arquivo(pathlib.Path("C:/Certidoes/x.pdf"))
+    assert abertos == [pathlib.Path("C:/Certidoes/x.pdf")]
+
+
+def test_abrir_arquivo_no_linux_usa_xdg_open(monkeypatch):
+    comandos = []
+    monkeypatch.setattr(app.sys, "platform", "linux")
+    monkeypatch.setattr(app.subprocess, "Popen", comandos.append)
+    app._abrir_arquivo(pathlib.Path("/home/u/Certidoes/x.pdf"))
+    assert comandos == [["xdg-open", str(pathlib.Path("/home/u/Certidoes/x.pdf"))]]
 
 
 def test_segunda_consulta_simultanea_e_recusada():

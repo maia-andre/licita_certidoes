@@ -1,6 +1,8 @@
 """Tela em pywebview. Os métodos públicos de Api ficam expostos ao JavaScript da tela."""
+import os
 import pathlib
 import subprocess
+import sys
 import threading
 
 import webview
@@ -12,7 +14,11 @@ TELA = pathlib.Path(__file__).parent / "ui" / "index.html"
 
 
 def _abrir_arquivo(caminho: pathlib.Path) -> None:
-    subprocess.Popen(["xdg-open", str(caminho)])
+    """Abre o arquivo no programa padrão do sistema."""
+    if sys.platform == "win32":
+        os.startfile(caminho)
+    else:
+        subprocess.Popen(["xdg-open", str(caminho)])
 
 
 class Api:

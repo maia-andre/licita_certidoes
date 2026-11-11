@@ -61,6 +61,16 @@ def test_janela_fechada_gera_erro_claro(monkeypatch, tmp_path):
     navegador.close.assert_called_once()
 
 
+def test_navegador_que_nao_abre_gera_erro_claro(monkeypatch, tmp_path):
+    # Ex.: Chromium do Playwright não instalado ou bloqueado na máquina.
+    playwright = MagicMock()
+    chromium = playwright.return_value.__enter__.return_value.chromium
+    chromium.launch.side_effect = PlaywrightError("Executable doesn't exist")
+    monkeypatch.setattr(tst, "sync_playwright", playwright)
+    with pytest.raises(PortalErro, match="navegador"):
+        tst.obter_cndt(CNPJ, pasta_base=tmp_path)
+
+
 def test_portal_fora_do_ar_gera_erro_claro(tmp_path):
     with pytest.raises(PortalErro, match="Não foi possível"):
         obter_cndt(CNPJ, pasta_base=tmp_path, url="http://127.0.0.1:9/", headless=True, tempo_limite_ms=2_000)
