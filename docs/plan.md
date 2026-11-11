@@ -1,6 +1,6 @@
 # Plan: Obtenção assistida de certidões de fornecedores
 Spec: docs/spec.md, versão 1.3 | Gerado: 2026-11-06
-Progresso: 3/10 incrementos concluídos
+Progresso: 4/10 incrementos concluídos
 
 ## Backlog
 
@@ -23,7 +23,7 @@ Depende de: INC-02
 Entrega verificável: um CNPJ real obtém o CRF (navegador do servidor, PDF salvo pela opção "Imprimir"), e o servidor consegue marcar um item como "Não emitida" com a mensagem do portal.
 
 ### INC-04 — Situação e validade na tela
-Status: pendente
+Status: concluído (2026-11-11)
 Itens da spec: REQ-10, REQ-15 | RNF-05 | RN-03, RN-04, RN-06 | CE-09, CE-11
 Depende de: INC-03
 Entrega verificável: as certidões obtidas mostram situação e validade iguais às do PDF, ou "Conferir no PDF", com o aviso de que a decisão cabe ao servidor.

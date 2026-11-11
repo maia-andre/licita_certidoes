@@ -1,7 +1,10 @@
+import datetime as dt
 import pathlib
 
+from certidoes import leitura
 from certidoes import sequencia as seq
 from certidoes.portais.comum import NaoEmitida, PortalErro
+from tests.conftest import pdf_com_texto
 
 CNPJ = "11222333000181"
 
@@ -25,7 +28,8 @@ def test_itens_seguem_a_ordem_da_rn01_com_o_modo_de_cada_portal():
 def test_estado_inicial_e_aguardando():
     execucao = seq.Execucao([item("a", obtem("/a.pdf"))], CNPJ)
     assert execucao.itens() == [{"chave": "a", "nome": "A", "portal": "Portal a", "modo": "automatizado",
-                                 "estado": "Aguardando", "mensagem": "", "arquivo": None}]
+                                 "estado": "Aguardando", "mensagem": "", "arquivo": None,
+                                 "situacao": None, "validade": None, "vencida": False}]
 
 
 def nao_emite_ate_o_servidor_avisar(execucao_ref):
@@ -172,3 +176,63 @@ def test_itens_devolve_copia():
     execucao = seq.Execucao([item("a", obtem("/a.pdf"))], CNPJ)
     execucao.itens()[0]["estado"] = "alterado"
     assert execucao.itens()[0]["estado"] == "Aguardando"
+
+
+def pdf_cndt(tmp_path, validade="10/05/2027", cnpj="11.222.333/0001-81"):
+    arquivo = tmp_path / "cndt.pdf"
+    arquivo.write_bytes(pdf_com_texto("CERTIDAO NEGATIVA DE DEBITOS TRABALHISTAS", f"CNPJ: {cnpj}",
+                                      f"Validade: {validade} - 180 dias"))
+    return arquivo
+
+
+def executar_com_leitura(arquivo, hoje=dt.date(2026, 11, 11), ler=leitura.ler_cndt):
+    execucao = seq.Execucao([seq.Item("a", "A", "P", lambda cnpj, ao_aguardar: arquivo, "", seq.AUTOMATIZADO, ler)],
+                            CNPJ, hoje=lambda: hoje)
+    execucao.rodar()
+    return execucao.itens()[0]
+
+
+def test_certidao_obtida_mostra_situacao_e_validade_lidas_do_pdf(tmp_path):
+    item_a = executar_com_leitura(pdf_cndt(tmp_path))
+    assert (item_a["estado"], item_a["situacao"], item_a["validade"], item_a["vencida"]) == (
+        "Obtida", "Negativa", "10/05/2027", False)
+
+
+def test_certidao_com_validade_anterior_a_hoje_aparece_vencida(tmp_path):
+    item_a = executar_com_leitura(pdf_cndt(tmp_path, validade="10/11/2026"))
+    assert (item_a["validade"], item_a["vencida"]) == ("10/11/2026", True)
+
+
+def test_validade_igual_a_hoje_ainda_nao_esta_vencida(tmp_path):
+    assert executar_com_leitura(pdf_cndt(tmp_path, validade="11/11/2026"))["vencida"] is False
+
+
+def test_pdf_ilegivel_continua_obtida_e_pede_conferencia(tmp_path):
+    arquivo = tmp_path / "quebrado.pdf"
+    arquivo.write_bytes(b"%PDF-1.4 sem texto")
+    item_a = executar_com_leitura(arquivo)
+    assert (item_a["estado"], item_a["situacao"], item_a["validade"], item_a["vencida"]) == (
+        "Obtida", "Conferir no PDF", "Conferir no PDF", False)
+
+
+def test_pdf_de_outra_empresa_pede_conferencia(tmp_path):
+    item_a = executar_com_leitura(pdf_cndt(tmp_path, cnpj="99.999.999/0001-91"))
+    assert (item_a["situacao"], item_a["validade"]) == ("Conferir no PDF", "Conferir no PDF")
+
+
+def test_arquivo_que_sumiu_pede_conferencia(tmp_path):
+    item_a = executar_com_leitura(tmp_path / "nao-existe.pdf")
+    assert (item_a["estado"], item_a["situacao"]) == ("Obtida", "Conferir no PDF")
+
+
+def test_item_nao_obtido_fica_sem_situacao_e_validade():
+    def falha(cnpj, ao_aguardar):
+        raise PortalErro("fora do ar")
+
+    execucao = seq.Execucao([item("a", falha)], CNPJ)
+    execucao.rodar()
+    assert (execucao.itens()[0]["situacao"], execucao.itens()[0]["validade"]) == (None, None)
+
+
+def test_itens_reais_tem_leitor():
+    assert [i.ler for i in seq.ITENS] == [leitura.ler_cnd, leitura.ler_crf, leitura.ler_cndt]

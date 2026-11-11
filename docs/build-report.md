@@ -1,30 +1,26 @@
 # Build report — 2026-11-11
 Spec: docs/spec.md, versão 1.3
-Incremento: INC-03 — CRF FGTS e certidão não emitida
+Incremento: INC-04 — Situação e validade na tela
 Rodada: construção
-Testes: 82 passando / 82 total — `.venv\Scripts\python -m pytest -q` (Windows 11, Python 3.14.6)
-
-## Antes da construção: viabilidade da Caixa
-- Um único acesso de leitura em Chromium headless foi redirecionado para o bloqueio de robôs da Caixa (Radware/ShieldSquare: "Estamos detectando comportamento malicioso no acesso"). Sem novas tentativas automatizadas, para não marcar o IP da prefeitura.
-- Controle no navegador normal: o CRF é uma página com link e botão "Imprimir"; o servidor salva como PDF, com nome livre (sugestão do navegador: "Consulta Regularidade do Empregador.pdf").
-- O texto do PDF salvo é legível pela `pypdf` e traz "Certificado de Regularidade do FGTS - CRF", a inscrição e a validade.
-- Decisões aprovadas (spec 1.3): CRF no modo navegador do servidor, PDF reconhecido pelo conteúdo; botão "O portal não emitiu" com campo opcional para a mensagem.
+Testes: 112 passando / 112 total — `.venv\Scripts\python -m pytest -q` (Windows 11, Python 3.14.6)
 
 ## Requisitos atendidos
-- **REQ-11** — Atendido no modo navegador do servidor — botão e campo na linha do item em "Aguardando servidor" (`certidoes/ui/index.html`), `Api.informar_nao_emitida` (`certidoes/app.py`), `Execucao.informar_nao_emitida` e estado "Não emitida" (`certidoes/sequencia.py`), `SinalNaoEmitida`/`NaoEmitida` (`certidoes/portais/comum.py`). `tests/test_sequencia.py::test_servidor_informa_nao_emitida_com_a_mensagem_do_portal`, `::test_nao_emitida_sem_mensagem_pede_para_conferir_no_portal`, `::test_nao_emitida_so_vale_para_item_do_navegador_que_aguarda_o_servidor`, `tests/test_app.py::test_informar_nao_emitida_repassa_para_o_item_que_aguarda_o_servidor`.
-- **RN-09** (Caixa) — Atendido — `certidoes/portais/caixa.py`: abre o portal, copia o CNPJ e aceita qualquer PDF novo em Downloads cujo texto traga o título do CRF e o CNPJ. `tests/test_caixa.py`.
-- **RN-01** — A sequência agora tem CND federal, CRF FGTS e CNDT, nessa ordem. `tests/test_sequencia.py::test_itens_seguem_a_ordem_da_rn01_com_o_modo_de_cada_portal`.
+- **REQ-10** — Atendido — `certidoes/leitura.py` (`ler_cnd`, `ler_crf`, `ler_cndt`, `ler`) e `Execucao._registrar_leitura` (`certidoes/sequencia.py`); colunas "Situação" e "Validade" na tela. `tests/test_leitura.py`, `tests/test_sequencia.py::test_certidao_obtida_mostra_situacao_e_validade_lidas_do_pdf`.
+- **REQ-15** — Atendido — aviso permanente `#aviso` em `certidoes/ui/index.html`. `tests/test_app.py::test_aviso_permanente_de_que_a_decisao_cabe_ao_servidor`.
+- **RNF-05** — Atendido — leitura com `pypdf`, local, sem IA e sem serviços externos (`certidoes/pdf.py`).
+- **RN-03** — Atendido — situação lida só do título da certidão ("CERTIDÃO NEGATIVA/POSITIVA ..."), nunca do corpo; "Positiva com efeitos de negativa" é testada antes de "Positiva"; CRF "Regular" pela frase "encontra-se em situação regular". Em qualquer dúvida, "Conferir no PDF". `tests/test_leitura.py::test_cnd_positiva_nao_vira_efeito_de_negativa_por_causa_do_corpo`, `::test_documento_de_outro_tipo_pede_conferencia`.
+- **RN-04** — Atendido — validade é a data impressa ("Válida até", "Validade:", data final do CRF); sem data, com datas divergentes ou com data inválida, "Conferir no PDF", sem calcular prazo. `tests/test_leitura.py::test_sem_data_de_validade_pede_conferencia_sem_calcular_prazo`, `::test_duas_datas_de_validade_diferentes_pedem_conferencia`, `::test_data_invalida_pede_conferencia`.
+- **RN-06** — Atendido — a tela mostra só a situação impressa e a validade; não há termos de habilitação, inabilitação ou bloqueio.
 
 ## Casos extremos cobertos
-- **CE-10** — "Não emitida" nunca vira "Falha técnica": `NaoEmitida` é tratada antes de `PortalErro` em `Execucao.rodar`. `tests/test_sequencia.py::test_servidor_informa_nao_emitida_com_a_mensagem_do_portal`, `tests/test_caixa.py::test_servidor_informa_que_o_portal_nao_emitiu`.
-- **CE-13** (Caixa) — PDF novo que não é CRF, ou CRF de outro CNPJ, é ignorado e fica em Downloads; sem CRF do CNPJ, tempo esgotado. `tests/test_caixa.py::test_ignora_pdf_novo_que_nao_e_crf_e_crf_de_outro_cnpj`, `::test_sem_crf_do_cnpj_termina_em_tempo_esgotado`.
+- **CE-09** — PDF ilegível, arquivo sumido ou leitura com erro: o item continua "Obtida" e mostra "Conferir no PDF". `tests/test_sequencia.py::test_pdf_ilegivel_continua_obtida_e_pede_conferencia`, `::test_arquivo_que_sumiu_pede_conferencia`.
+- **CE-11** — validade anterior a hoje aparece com "(Vencida)"; validade igual a hoje ainda não está vencida. `tests/test_sequencia.py::test_certidao_com_validade_anterior_a_hoje_aparece_vencida`, `::test_validade_igual_a_hoje_ainda_nao_esta_vencida`.
 
-## Outras mudanças
-- `certidoes/pdf.py`: `texto_do_pdf` e `contem_cnpj`, locais e sem IA (RNF-05); base para o INC-04.
-- `navegador_servidor.aguardar_arquivo`: conferência opcional do conteúdo (arquivo recusado não é relido) e encerramento pelo aviso de "Não emitida".
-- `requirements.txt`: `pypdf==7.0.1`.
-- `tests/conftest.py`: `pdf_com_texto` gera PDFs de teste com texto, sem certidões reais (RNF-06).
+## Proteção adicional (RN-03)
+- Se nenhum CNPJ do PDF tiver a mesma raiz (8 primeiros caracteres) do CNPJ consultado, a tela mostra "Conferir no PDF". A raiz cobre CND e CNDT emitidas para matriz e filiais. `tests/test_leitura.py::test_cnpj_de_outra_empresa_pede_conferencia`, `::test_filial_da_mesma_empresa_confere_pela_raiz`.
+
+## Calibração com certidões reais
+Leitura dos 6 PDFs reais emitidos em 11/11/2026: CND "Positiva com efeitos de negativa" até 06/02/2027 (2 arquivos), CNDT "Negativa" até 10/05/2027 (3), CRF "Regular" até 08/12/2026 (1). Os testes usam textos modelados nesses PDFs, com empresa e CNPJ fictícios.
 
 ## Perguntas em aberto / pendências
-- Mapear os cerca de 4 cliques da Caixa até salvar o PDF, para deixar a instrução da tela mais precisa.
-- "Não emitida" lida automaticamente do portal só será possível em portais automatizados; nos do navegador do servidor, depende do aviso do servidor.
+- As variantes "Positiva" da CND e "Positiva com efeito de negativa" e "Positiva" da CNDT foram escritas a partir do padrão dos títulos, sem PDF real dessas situações. Se o título real for diferente, a tela mostra "Conferir no PDF" (nunca uma situação errada); conferir na validação com 10 CNPJs (INC-10).

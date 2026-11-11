@@ -87,5 +87,5 @@ class Api:
 
 
 def iniciar():
-    webview.create_window("Certidões", html=TELA.read_text(encoding="utf-8"), js_api=Api(), width=720, height=560)
+    webview.create_window("Certidões", html=TELA.read_text(encoding="utf-8"), js_api=Api(), width=980, height=600)
     webview.start()

@@ -17,6 +17,7 @@
   .erro { color: #b00020; }
   .Obtida { color: #1b6e1b; font-weight: 600; }
   .alerta { color: #8a4b00; font-weight: 600; }
+  .aviso { margin-top: 24px; padding: 10px 12px; background: #f3f3f3; border-left: 4px solid #777; font-size: 14px; }
   .nao-emitida { margin-top: 10px; }
   .nao-emitida label { font-weight: 400; font-size: 13px; margin-bottom: 4px; }
   .nao-emitida textarea { font: inherit; font-size: 14px; width: 100%; box-sizing: border-box; padding: 6px; }
@@ -33,9 +34,10 @@
   </form>
   <p id="status" role="status"></p>
   <table id="itens" hidden>
-    <thead><tr><th>Certidão</th><th>Portal</th><th>Situação</th><th>Detalhes</th></tr></thead>
+    <thead><tr><th>Certidão</th><th>Portal</th><th>Estado</th><th>Situação</th><th>Validade</th><th>Detalhes</th></tr></thead>
     <tbody></tbody>
   </table>
+  <p id="aviso" class="aviso">Este programa só reúne informações dos portais. A análise dos documentos e a decisão cabem ao servidor. Sempre confira o PDF.</p>
 <script>
   const status = document.getElementById('status');
   const emitir = document.getElementById('emitir');
@@ -59,7 +61,9 @@
     const tr = document.createElement('tr');
     celula(tr).textContent = item.nome;
     celula(tr).textContent = item.portal;
+    const estado = celula(tr);
     const situacao = celula(tr);
+    const validade = celula(tr);
     const detalhe = celula(tr, 'detalhe');
     const mensagem = document.createElement('div');
     const abrir = document.createElement('button');
@@ -90,15 +94,19 @@
 
     detalhe.append(mensagem, abrir, naoEmitida);
     corpo.appendChild(tr);
-    return { situacao, mensagem, abrir, naoEmitida, informar };
+    return { estado, situacao, validade, mensagem, abrir, naoEmitida, informar };
   }
 
   function desenhar(itens) {
     for (const item of itens) {
       if (!linhas.has(item.chave)) linhas.set(item.chave, criarLinha(item));
       const l = linhas.get(item.chave);
-      l.situacao.textContent = item.estado;
-      l.situacao.className = {'Obtida': 'Obtida', 'Falha técnica': 'erro', 'Não emitida': 'alerta'}[item.estado] || '';
+      l.estado.textContent = item.estado;
+      l.estado.className = {'Obtida': 'Obtida', 'Falha técnica': 'erro', 'Não emitida': 'alerta'}[item.estado] || '';
+      l.situacao.textContent = item.situacao || '';
+      l.situacao.className = item.situacao === 'Conferir no PDF' ? 'alerta' : '';
+      l.validade.textContent = item.validade ? item.validade + (item.vencida ? ' (Vencida)' : '') : '';
+      l.validade.className = item.vencida ? 'erro' : (item.validade === 'Conferir no PDF' ? 'alerta' : '');
       l.mensagem.textContent = item.arquivo ? 'Salva em: ' + item.arquivo : item.mensagem;
       l.abrir.hidden = !item.arquivo;
       l.naoEmitida.hidden = !(item.modo === 'navegador' && item.estado === 'Aguardando servidor');

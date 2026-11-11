@@ -174,7 +174,14 @@ def test_iniciar_cria_janela_com_a_tela_e_a_api(monkeypatch):
 
 def test_tela_tem_campo_botao_tabela_e_nao_usa_innerhtml():
     html = app.TELA.read_text(encoding="utf-8")
-    for elemento in ('id="cnpj"', 'id="emitir"', 'id="status"', 'id="itens"', "O portal não emitiu",
+    for elemento in ('id="cnpj"', 'id="emitir"', 'id="status"', 'id="itens"', 'id="aviso"', "O portal não emitiu",
                      "Mensagem do portal (opcional)", "informar_nao_emitida"):
         assert elemento in html
     assert "innerHTML" not in html
+
+
+def test_aviso_permanente_de_que_a_decisao_cabe_ao_servidor():
+    html = app.TELA.read_text(encoding="utf-8")
+    assert "A análise dos documentos e a decisão cabem ao servidor" in html
+    aviso = html.split('id="aviso"', 1)[1].split(">", 1)[0]
+    assert "hidden" not in aviso

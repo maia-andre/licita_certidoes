@@ -10,7 +10,7 @@ Programa local e gratuito para pregoeiros, gestores e fiscais de contratos.
 ![Python](https://img.shields.io/badge/Python-3-3776AB?logo=python&logoColor=white)
 ![Playwright](https://img.shields.io/badge/Playwright-Chromium-2EAD33?logo=playwright&logoColor=white)
 ![Plataforma](https://img.shields.io/badge/plataforma-Windows%20%7C%20Linux-555)
-![Testes](https://img.shields.io/badge/testes-82%20passando-brightgreen)
+![Testes](https://img.shields.io/badge/testes-112%20passando-brightgreen)
 
 </div>
 
@@ -47,6 +47,7 @@ Hoje o programa emite **três** certidões em sequência: a CND federal, o CRF d
 
 - Valida o CNPJ, numérico ou alfanumérico, antes de qualquer consulta externa.
 - Mostra cada certidão numa tabela, com o estado atualizado durante a consulta.
+- Lê de cada PDF a situação (Negativa, Positiva com efeitos de negativa, Regular...) e a validade, avisando quando está vencida. Na dúvida, mostra "Conferir no PDF".
 - Se um portal falhar, marca "Falha técnica" e segue para a próxima certidão.
 - Guarda os PDFs na pasta `Certidoes\<CNPJ>\` do usuário (no Windows, `C:\Users\<usuário>\Certidoes\`).
 - Abre cada PDF pela própria tela.
@@ -119,8 +120,8 @@ sudo apt install python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1
 | 01 | CNDT de ponta a ponta | CNPJ, captcha, PDF salvo e aberto pela tela | ✅ Concluído |
 | 02 | CND federal e sequência de itens | CNDT e CND em sequência, com o estado de cada item | ✅ Concluído |
 | 03 | CRF FGTS | CRF obtido ou "Não emitida" com a mensagem do portal | ✅ Concluído |
-| 04 | Situação e validade na tela | Dados lidos do PDF, ou "Conferir no PDF" | ⏭️ Próximo |
-| 05 | Identificação da empresa | Dados da BrasilAPI, escolha de filial e recusa fora de SP | Pendente |
+| 04 | Situação e validade na tela | Dados lidos do PDF, ou "Conferir no PDF" | ✅ Concluído |
+| 05 | Identificação da empresa | Dados da BrasilAPI, escolha de filial e recusa fora de SP | ⏭️ Próximo |
 | 06 | Certidão Única estadual | Emissão pelo SIDEB | Pendente |
 | 07 | Pular e repetir itens | Refazer só o item que falhou | Pendente |
 | 08 | Falência no e-SAJ | Pedido enviado e item em "Pedido feito: acompanhar" | Pendente |

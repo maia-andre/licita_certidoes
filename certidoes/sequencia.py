@@ -1,9 +1,13 @@
-"""Sequência de itens (REQ-05) com o estado de cada um (RN-02, REQ-09)."""
+"""Sequência de itens (REQ-05) com o estado de cada um (RN-02, REQ-09) e a leitura do PDF (REQ-10)."""
 import dataclasses
+import datetime as dt
+import pathlib
 import threading
 from typing import Callable
 
+from certidoes import leitura
 from certidoes.cnpj import formatar
+from certidoes.pdf import texto_do_pdf
 from certidoes.portais import caixa, receita, tst
 from certidoes.portais.comum import NaoEmitida, PortalErro, SinalNaoEmitida
 
@@ -29,13 +33,14 @@ class Item:
     obter: Callable  # obter(cnpj, ao_aguardar=..., [nao_emitida=...]) -> Path; levanta PortalErro/NaoEmitida
     instrucao: str  # texto mostrado em "Aguardando servidor"; aceita {cnpj}
     modo: str = AUTOMATIZADO
+    ler: Callable | None = None  # ler(texto) -> leitura.Leitura
 
 
 # Ordem da RN-01. Os demais itens entram nos próximos incrementos.
 ITENS = (
-    Item("cnd", "CND federal", "Receita Federal", receita.obter_cnd, receita.INSTRUCAO, NAVEGADOR),
-    Item("crf", "CRF FGTS", "Caixa", caixa.obter_crf, caixa.INSTRUCAO, NAVEGADOR),
-    Item("cndt", "CNDT", "TST", tst.obter_cndt, tst.INSTRUCAO, AUTOMATIZADO),
+    Item("cnd", "CND federal", "Receita Federal", receita.obter_cnd, receita.INSTRUCAO, NAVEGADOR, leitura.ler_cnd),
+    Item("crf", "CRF FGTS", "Caixa", caixa.obter_crf, caixa.INSTRUCAO, NAVEGADOR, leitura.ler_crf),
+    Item("cndt", "CNDT", "TST", tst.obter_cndt, tst.INSTRUCAO, AUTOMATIZADO, leitura.ler_cndt),
 )
 
 
@@ -49,14 +54,16 @@ def _mensagem_nao_emitida(texto: str) -> str:
 class Execucao:
     """Percorre os itens para um CNPJ. Uma falha em um item não interrompe os demais (CE-05)."""
 
-    def __init__(self, itens, cnpj):
+    def __init__(self, itens, cnpj, hoje=dt.date.today):
         self._itens = tuple(itens)
         self._cnpj = cnpj
+        self._hoje = hoje
         self._trava = threading.Lock()
         self._sinais = {item.chave: SinalNaoEmitida() for item in self._itens if item.modo == NAVEGADOR}
         self._estado = {
             item.chave: {"chave": item.chave, "nome": item.nome, "portal": item.portal, "modo": item.modo,
-                         "estado": AGUARDANDO, "mensagem": "", "arquivo": None}
+                         "estado": AGUARDANDO, "mensagem": "", "arquivo": None,
+                         "situacao": None, "validade": None, "vencida": False}
             for item in self._itens
         }
 
@@ -83,6 +90,18 @@ class Execucao:
                 self._marcar(item.chave, FALHA, f"Erro inesperado: {erro}")
             else:
                 self._marcar(item.chave, OBTIDA, "", arquivo)
+                self._registrar_leitura(item, arquivo)
+
+    def _registrar_leitura(self, item, arquivo):
+        """Situação e validade do PDF; qualquer problema vira "Conferir no PDF" (CE-09)."""
+        try:
+            lido = leitura.ler(item.ler, texto_do_pdf(pathlib.Path(arquivo).read_bytes()), self._cnpj)                 if item.ler else leitura.Leitura()
+        except Exception:  # noqa: BLE001 — a certidão continua "Obtida"; só a leitura falhou
+            lido = leitura.Leitura()
+        validade = lido.validade.strftime("%d/%m/%Y") if lido.validade else leitura.CONFERIR
+        vencida = lido.validade is not None and lido.validade < self._hoje()
+        with self._trava:
+            self._estado[item.chave].update(situacao=lido.situacao, validade=validade, vencida=vencida)
 
     def informar_nao_emitida(self, chave, mensagem=""):
         """O servidor avisa que o portal não emitiu. Só vale para item no navegador do servidor que aguarda o servidor."""
