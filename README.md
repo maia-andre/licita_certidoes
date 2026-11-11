@@ -68,7 +68,7 @@ A primeira versão atende empresas com CNPJ de SP.
 | CND federal | Receita Federal | ✅ Funcionando (no navegador do servidor) |
 | CNDT | TST | ✅ Funcionando |
 | CRF FGTS | Caixa | ✅ Funcionando (no navegador do servidor) |
-| Certidão Única estadual | SIDEB (Sefaz-SP/PGE-SP) | Planejada |
+| Certidão Única estadual | SIDEB (Sefaz-SP/PGE-SP) | ⏸️ Adiada (o SIDEB exige login gov.br) |
 | Falência, concordatas e recuperações | e-SAJ/TJSP | Planejada, com pedido assistido |
 | Complemento cível de primeiro grau | eproc/TJSP | Planejada, com pedido assistido |
 
@@ -129,8 +129,8 @@ sudo apt install python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1
 | 03 | CRF FGTS | CRF obtido ou "Não emitida" com a mensagem do portal | ✅ Concluído |
 | 04 | Situação e validade na tela | Dados lidos do PDF, ou "Conferir no PDF" | ✅ Concluído |
 | 05 | Identificação da empresa | Dados da BrasilAPI, escolha de filial e recusa fora de SP | ✅ Concluído |
-| 06 | Certidão Única estadual | Emissão pelo SIDEB | ⏭️ Próximo |
-| 07 | Pular e repetir itens | Refazer só o item que falhou | Pendente |
+| 06 | Certidão Única estadual | Emissão pelo SIDEB | ⏸️ Adiado: exige login gov.br |
+| 07 | Pular e repetir itens | Refazer só o item que falhou | ⏭️ Próximo |
 | 08 | Falência no e-SAJ | Pedido enviado e item em "Pedido feito: acompanhar" | Pendente |
 | 09 | Complemento no eproc | Pedido com gov.br e os seis itens na tela | Pendente |
 | 10 | Validação com CNPJs reais | Resultado de 10 CNPJs de SP conferido com os PDFs | Pendente |

@@ -1,5 +1,5 @@
 # Plan: Obtenção assistida de certidões de fornecedores
-Spec: docs/spec.md, versão 1.3 | Gerado: 2026-11-06
+Spec: docs/spec.md, versão 1.4 | Gerado: 2026-11-06
 Progresso: 5/10 incrementos concluídos
 
 ## Backlog
@@ -35,7 +35,7 @@ Depende de: INC-04
 Entrega verificável: a tela mostra os dados da empresa, pede a escolha em caso de filial e recusa um CNPJ fora de SP sem abrir nenhum portal.
 
 ### INC-06 — Certidão Única estadual no SIDEB
-Status: pendente
+Status: adiado (2026-11-11) — o SIDEB exige login gov.br para emitir (spec 1.4, RN-10)
 Itens da spec: RN-08 | CE-07
 Depende de: INC-05
 Entrega verificável: um CNPJ real de SP obtém a Certidão Única pelo SIDEB, e fora do horário do sistema o item mostra "Falha técnica" com essa explicação.
@@ -43,7 +43,7 @@ Entrega verificável: um CNPJ real de SP obtém a Certidão Única pelo SIDEB, e
 ### INC-07 — Pular e repetir itens
 Status: pendente
 Itens da spec: REQ-07, REQ-14 | CE-08
-Depende de: INC-06
+Depende de: INC-05 (INC-06 adiado)
 Entrega verificável: o servidor pula um item, repete só esse item depois e, ao fechar o navegador no meio do fluxo, a tela continua aberta com o item em "Falha técnica".
 
 ### INC-08 — Pedido de falência no e-SAJ
@@ -72,3 +72,4 @@ O INC-02 antecipa o maior risco técnico (hCaptcha em navegador automatizado). S
 ## Revisões
 - **2026-11-11 — Receita recusa navegador automatizado.** No Chromium do Playwright, o hCaptcha passa, mas a API da Receita responde `CaptchaFalhaValidacao` (código 023) em "Emitir" e em "Consultar". No navegador normal do servidor, o mesmo CNPJ funcionou. Decisão aprovada: criar o modo "navegador do servidor" (spec 1.2, RN-09) para a CND federal, sem tentar contornar a recusa. O TST continua automatizado.
 - **2026-11-11 — Caixa bloqueia navegador automatizado.** Um único acesso de leitura em Chromium headless foi barrado pelo bot manager da Caixa (Radware/ShieldSquare). Sem novas tentativas automatizadas, para não marcar o IP da prefeitura. Teste de controle no navegador normal: o CRF é uma página, salva como PDF pela opção "Imprimir", com nome livre. Decisão aprovada (spec 1.3): CRF no modo navegador do servidor, PDF reconhecido pelo texto, e botão "O portal não emitiu" com campo opcional para a mensagem.
+- **2026-11-11 — Certidão Única estadual adiada.** O SIDEB (`https://www4.fazenda.sp.gov.br/SIDEB/CertidaoNegativaDebitos`) aceita navegador automatizado na página inicial, mas "Emitir eCND" leva ao login gov.br, com hCaptcha. Decisão do servidor: deixar o item de fora por enquanto (spec 1.4, RN-10). O INC-07 depende só dos itens já existentes. O INC-09 (eproc) também envolve gov.br e deve ser reavaliado antes de começar.

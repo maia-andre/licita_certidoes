@@ -1,6 +1,6 @@
 # Spec: Obtenção assistida de certidões de fornecedores
-Versão: 1.3 — 2026-11-11 | Status: aprovada
-Alterações: 1.1 — Windows passa a ser a plataforma principal (RNF-01). 1.2 — Modo "navegador do servidor" para portais que recusam navegador automatizado (REQ-05, REQ-06, RNF-01, RN-09, CE-13). 1.3 — Caixa também no modo navegador do servidor; reconhecimento do PDF pelo conteúdo; "Não emitida" informada pelo servidor nesse modo (REQ-11, RN-09).
+Versão: 1.4 — 2026-11-11 | Status: aprovada
+Alterações: 1.1 — Windows passa a ser a plataforma principal (RNF-01). 1.2 — Modo "navegador do servidor" para portais que recusam navegador automatizado (REQ-05, REQ-06, RNF-01, RN-09, CE-13). 1.3 — Caixa também no modo navegador do servidor; reconhecimento do PDF pelo conteúdo; "Não emitida" informada pelo servidor nesse modo (REQ-11, RN-09). 1.4 — Certidão Única estadual (item 4, RN-08, CE-07) adiada: o SIDEB exige login gov.br para emitir.
 
 ## Objetivo
 Em cada habilitação e a cada nota fiscal de contrato, servidores da Prefeitura de São José dos Campos (pregoeiros, gestores e fiscais) reúnem à mão, em portais diferentes, as certidões de regularidade do fornecedor. O projeto é um programa local em código aberto no qual o servidor digita um CNPJ, resolve apenas os captchas e logins que os portais exigirem e vê, em uma tela simples, a situação e a validade de cada certidão, com o PDF à mão. A primeira versão atende empresas com CNPJ de SP.
@@ -40,7 +40,7 @@ Em cada habilitação e a cada nota fiscal de contrato, servidores da Prefeitura
   | 1 | CND federal | Receita Federal | Fluxo principal |
   | 2 | CRF FGTS | Caixa | Fluxo principal |
   | 3 | CNDT | TST | Fluxo principal |
-  | 4 | Certidão Única estadual | SIDEB (Sefaz-SP/PGE-SP) | Fluxo principal |
+  | 4 | Certidão Única estadual | SIDEB (Sefaz-SP/PGE-SP) | **Adiado** (exige login gov.br; ver RN-10) |
   | 5 | Falência, concordatas e recuperações | e-SAJ/TJSP | Assistido (REQ-12) |
   | 6 | Complemento cível de primeiro grau | eproc/TJSP | Assistido (REQ-13) |
 
@@ -57,6 +57,7 @@ Em cada habilitação e a cada nota fiscal de contrato, servidores da Prefeitura
     - Receita Federal: `CaptchaFalhaValidacao`, código 023, testado em 11/11/2026. PDF reconhecido pelo nome `Certidao-<CNPJ>.pdf`.
     - Caixa: bloqueio de robôs (Radware/ShieldSquare) já no primeiro acesso, testado em 11/11/2026. O CRF é uma página que o servidor salva como PDF pela opção "Imprimir"; o PDF é reconhecido pelo texto "Certificado de Regularidade do FGTS" e pelo CNPJ. Não repetir acessos automatizados à Caixa: a página de bloqueio registra o IP da rede da prefeitura.
   - O programa nunca tenta esconder a automação de um portal (RN-05).
+- **RN-10** — Itens adiados: a Certidão Única estadual (item 4) fica fora da sequência por enquanto. Em 11/11/2026, o botão "Emitir eCND" do SIDEB levou ao login gov.br (com hCaptcha). O programa não automatiza login gov.br. RN-08 e CE-07 voltam a valer se o item for retomado.
 
 ## Casos extremos
 - **CE-01** (afeta REQ-01) — CNPJ com dígito verificador inválido: mostrar erro e não fazer consulta externa.
@@ -99,4 +100,5 @@ Em cada habilitação e a cada nota fiscal de contrato, servidores da Prefeitura
 1. **Pasta dos PDFs:** esta spec adota uma pasta local por CNPJ apenas para o REQ-08 funcionar. O destino definitivo segue fora de escopo.
 2. **Viabilidade dos portais:** TST aceita navegador automatizado; Receita recusa (RN-09). Falta testar Caixa, SIDEB, e-SAJ e eproc, inclusive quais campos o SIDEB e o e-SAJ pedem.
 3. **eproc para terceiros:** não confirmei se o login gov.br do servidor permite pedir certidão de outro CNPJ. Se não permitir, o item 6 passa a ser apenas um aviso com o link.
+5. **Certidão Única estadual:** retomar se o SIDEB oferecer emissão sem login, ou se o login gov.br do servidor permitir emitir para CNPJ de terceiro (o servidor entraria no gov.br no próprio navegador, no modo da RN-09). Não testado em 11/11/2026.
 4. **Prazo e custo no TJSP:** não encontrei prazo nem confirmei gratuidade dos itens 5 e 6.
