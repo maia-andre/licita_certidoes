@@ -195,7 +195,7 @@ As notas de cada versão estão em [Releases](https://github.com/maia-andre/lici
 |---|---|---|
 | **1 · Fluxo básico** | INC-01 a INC-05 e INC-07 | Concluído em 11/11/2026 |
 | **2 · Certidões das minutas** | INC-08, INC-11 e INC-12 | Concluído em 12/11/2026 |
-| **3 · Validação** | INC-10, INC-14 e INC-15 | Concluído em 12/11/2026 (release v0.3.0) |
+| **3 · Validação e tela** | INC-10, INC-14 e INC-15 | Concluído em 12/11/2026 (release v0.3.0) |
 | **4 · Certidões com login** | INC-06 (SIDEB), INC-09 (eproc) e INC-13 (CND de SJC) | Adiado: gov.br e sistema municipal em implantação |
 
 <details>
