@@ -44,7 +44,7 @@ Sete certidões em sequência, numa só tela, com o estado de cada uma atualizad
 | 5 | Falência, concordatas e recuperações | e-SAJ/TJSP | Automatizado | reCAPTCHA | "Nada consta" e data de emissão, ou "Pedido feito: acompanhar" |
 | 7 | Sanções: CEIS, CNEP e inidôneos do TCU | Consulta Consolidada (TCU) | Consulta direta | nenhum | Resultado de cada cadastro e data da consulta |
 | 10 | Improbidade administrativa (CNIA) | CNJ | Consulta direta | nenhum | "Nada consta" e data da consulta |
-| 8 | Apenados do TCE-SP | Sistema de Apenados (TCE-SP) | Navegador do servidor | Turnstile | "Nada consta" e validade |
+| 8 | Apenados do TCE-SP | Sistema de Apenados (TCE-SP) | Navegador do servidor | Turnstile | "Nada consta" e data da consulta |
 
 A numeração segue a lista da [especificação](docs/spec.md) (RN-01). Os itens 4, 6 e 9 estão [adiados](#caminho-para-as-demais-exigências).
 

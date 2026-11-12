@@ -1,5 +1,5 @@
 # Plan: Obtenção assistida de certidões de fornecedores
-Spec: docs/spec.md, versão 1.12 | Gerado: 2026-11-06
+Spec: docs/spec.md, versão 1.13 | Gerado: 2026-11-06
 Progresso: 11/14 incrementos concluídos (3 adiados)
 
 ## Backlog
@@ -108,6 +108,7 @@ O INC-02 antecipa o maior risco técnico (hCaptcha em navegador automatizado). S
 
   Novos incrementos: INC-11 (TCU), INC-12 (TCE-SP) e INC-13 (SJC, adiado). O INC-10 passa para depois deles.
 - **2026-11-12 — TCE-SP no navegador do servidor.** Reconhecimento só de leitura: o formulário "Gerar Certidão" abre direto pelo endereço; "Gerar" abre uma janela com o Turnstile, e "OK" gera a certidão na tela, com o link de PDF. Em duas tentativas assistidas no Chromium do Playwright, o Turnstile falhou com o erro 600010 (recusa de navegador automatizado). No navegador normal do servidor, o mesmo CNPJ gerou a certidão sem problema. Pela CE-15, o item 8 passou ao modo navegador do servidor (spec 1.9), sem tentar contornar. A certidão imprime "válido até" com a data da própria consulta, e o programa mostra essa data (RN-04).
+- **2026-11-12 — TCE-SP com data de emissão.** O "válido até" da certidão de apenados é o próprio momento da consulta, e a tela marcava "Vencida" no dia seguinte. Decisão do servidor: mostrar "Não impressa (emitida em dd/mm/aaaa)", como nas outras consultas de momento (spec 1.13).
 - **2026-11-12 — Validação com 10 CNPJs reais (INC-10).** Na janela real do programa, com 10 CNPJs (2 filiais, 1 de outra UF, 2 entes públicos), nenhum item mostrou situação ou validade diferente do PDF. A validação achou três problemas, corrigidos na spec 1.12:
   - o e-SAJ abre a certidão de falência liberada numa janela nova, no visualizador de PDF do Chromium, e o programa só esperava download; agora a resposta é interceptada, e 7 certidões saíram sozinhas;
   - o TCU respondeu "Sistema do CNJ está indisponível" em 20 de 20 consultas, enquanto o site do CNJ funcionava e tinha retirado o captcha; o CNJ virou item próprio, por consulta direta (INC-14), e o item 7 decide só por TCU, CEIS e CNEP;

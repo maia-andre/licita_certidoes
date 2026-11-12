@@ -177,16 +177,20 @@ def ler_sancoes_tcu(texto: str) -> Leitura:
 
 
 def ler_apenados_tcesp(texto: str) -> Leitura:
-    """Certidão de Apenados do TCE-SP: "Nada consta" só com "NÃO constam (…) IMPEDIMENTOS"; validade impressa."""
+    """Certidão de Apenados do TCE-SP: "Nada consta" só com "NÃO constam (…) IMPEDIMENTOS".
+
+    O "válido até" impresso é o próprio momento da consulta: a tela mostra a data de emissão, como na
+    falência, no TCU e no CNJ, em vez de uma validade que venceria no dia seguinte (decisão do servidor).
+    """
     t = normalizar(texto)
     if "CERTIDAO DE APENADOS" not in t or "TRIBUNAL DE CONTAS DO ESTADO DE SAO PAULO" not in t:
         return Leitura()
-    validade = _data_unica(t, r"VALIDO ATE " + _DATA)
+    emissao = _data_unica(t, r"ATE A PRESENTE DATA, " + _DATA) or _data_unica(t, r"VALIDO ATE " + _DATA)
     if "CONSTA(M)" in t:  # modelo do portal com impedimentos listados
-        return Leitura(CONFERIR, validade, None, "A certidão lista impedimento(s) de licitação ou contrato: confira o PDF.")
+        return Leitura(CONFERIR, None, emissao, "A certidão lista impedimento(s) de licitação ou contrato: confira o PDF.")
     if re.search(r"\bNAO CONSTAM, ATE A PRESENTE DATA, \d{2}/\d{2}/\d{4}\b.*?\bIMPEDIMENTOS DE LICITACAO", t):
-        return Leitura(NADA_CONSTA, validade)
-    return Leitura(CONFERIR, validade)
+        return Leitura(NADA_CONSTA, None, emissao)
+    return Leitura(CONFERIR, None, emissao)
 
 
 def ler_improbidade_cnj(texto: str) -> Leitura:

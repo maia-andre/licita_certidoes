@@ -526,7 +526,7 @@ def test_sancoes_com_cadastro_que_decide_indisponivel_ficam_obtidas_para_conferi
            in estado["mensagem"]
 
 
-def test_apenados_nada_consta_mostram_a_validade_impressa(tmp_path):
+def test_apenados_nada_consta_mostram_a_data_de_emissao_e_nao_vencem_no_dia_seguinte(tmp_path):
     from tests.conftest import TCESP_CERTIDAO
 
     arquivo = tmp_path / "apenados.pdf"
@@ -537,7 +537,7 @@ def test_apenados_nada_consta_mostram_a_validade_impressa(tmp_path):
     execucao.rodar()
     estado = execucao.itens()[0]
     assert (estado["estado"], estado["situacao"], estado["validade"], estado["vencida"]) == (
-        "Obtida", "Nada consta", "12/11/2026", True)
+        "Obtida", "Nada consta", "Não impressa (emitida em 12/11/2026)", False)
 
 
 def test_item_de_outra_uf_nao_se_aplica_e_nao_abre_o_portal():

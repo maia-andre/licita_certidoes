@@ -276,9 +276,9 @@ Página: 1 de 1
 """
 
 
-def test_apenados_tcesp_real_nada_consta_com_validade_impressa():
+def test_apenados_tcesp_real_nada_consta_com_data_de_emissao():
     lido = lt.ler(lt.ler_apenados_tcesp, TCESP_REAL, CNPJ)
-    assert lido == lt.Leitura(lt.NADA_CONSTA, dt.date(2026, 11, 12))
+    assert lido == lt.Leitura(lt.NADA_CONSTA, None, dt.date(2026, 11, 12))
 
 
 def test_apenados_tcesp_com_impedimentos_pede_conferencia():
@@ -286,7 +286,7 @@ def test_apenados_tcesp_com_impedimentos_pede_conferencia():
         "NÃO  constam,  até  a  presente  data,  12/11/2026,  às  13h58,  IMPEDIMENTOS",
         "CONSTA(M),  até  a  presente  data,  12/11/2026,  às  13h58,  o(s) IMPEDIMENTO(S)")
     lido = lt.ler_apenados_tcesp(texto)
-    assert (lido.situacao, lido.validade) == (lt.CONFERIR, dt.date(2026, 11, 12))
+    assert (lido.situacao, lido.validade, lido.emissao) == (lt.CONFERIR, None, dt.date(2026, 11, 12))
     assert "impedimento" in lido.detalhe
 
 
