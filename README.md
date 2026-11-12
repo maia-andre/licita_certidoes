@@ -16,6 +16,7 @@ Programa local e gratuito para pregoeiros, gestores e fiscais de contratos.
 ![pywebview](https://img.shields.io/badge/tela-pywebview-555)
 ![Plataforma](https://img.shields.io/badge/plataforma-Windows%20%7C%20Linux-555)
 ![Lei 14.133](https://img.shields.io/badge/Lei-14.133%2F2021-8A2BE2)
+[![Licença](https://img.shields.io/badge/licen%C3%A7a-AGPL%203.0-A42E2B)](LICENSE)
 
 [O problema](#-o-problema) ·
 [Certidões](#-certidões-que-o-programa-obtém) ·
@@ -274,7 +275,15 @@ sudo apt install python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1
 
 ## ⚖️ Licença
 
-Ainda não definida. Até lá, o código está visível, mas sem permissão formal de reutilização.
+Copyright (C) 2026 Município de São José dos Campos. Desenvolvido por André Maia.
+
+Software livre sob a [GNU Affero General Public License, versão 3](LICENSE) (AGPL 3.0). Na prática:
+
+- **Pode** usar, estudar, copiar, modificar e redistribuir o programa, inclusive em outros órgãos, sem pedir autorização.
+- **Pode** adaptar o programa e usá-lo internamente sem publicar nada.
+- **Precisa**, ao distribuir uma versão modificada ou oferecê-la como serviço pela rede, publicar o código-fonte dessa versão sob a mesma licença, mantendo os avisos de autoria.
+
+Assim, as melhorias feitas por outros municípios voltam abertas para todos. O texto da licença, em inglês, é o único com valor jurídico.
 
 ## ⚠️ Aviso
 

@@ -1,5 +1,5 @@
 # Plan: Obtenção assistida de certidões de fornecedores
-Spec: docs/spec.md, versão 1.10 | Gerado: 2026-11-06
+Spec: docs/spec.md, versão 1.11 | Gerado: 2026-11-06
 Progresso: 9/13 incrementos concluídos (3 adiados)
 
 ## Backlog
@@ -102,5 +102,6 @@ O INC-02 antecipa o maior risco técnico (hCaptcha em navegador automatizado). S
 
   Novos incrementos: INC-11 (TCU), INC-12 (TCE-SP) e INC-13 (SJC, adiado). O INC-10 passa para depois deles.
 - **2026-11-12 — TCE-SP no navegador do servidor.** Reconhecimento só de leitura: o formulário "Gerar Certidão" abre direto pelo endereço; "Gerar" abre uma janela com o Turnstile, e "OK" gera a certidão na tela, com o link de PDF. Em duas tentativas assistidas no Chromium do Playwright, o Turnstile falhou com o erro 600010 (recusa de navegador automatizado). No navegador normal do servidor, o mesmo CNPJ gerou a certidão sem problema. Pela CE-15, o item 8 passou ao modo navegador do servidor (spec 1.9), sem tentar contornar. A certidão imprime "válido até" com a data da própria consulta, e o programa mostra essa data (RN-04).
+- **2026-11-12 — Licença AGPL 3.0.** O código pertence ao Município (art. 4º da Lei 9.609/1998) e foi publicado sob a AGPL 3.0, com o aviso de copyright em nome do Município e o autor creditado no README. A escolha garante que versões modificadas, distribuídas ou oferecidas pela rede, continuem abertas. A tela ganhou um rodapé com a licença e o endereço do código (spec 1.11).
 - **2026-11-12 — CNPJ de qualquer UF.** O projeto vai ser oferecido a outros municípios, e a regra "só CNPJ de SP" deixou de valer (spec 1.10). O REQ-04 do INC-05 foi revisto: o programa atende qualquer UF, e o item cujo portal só atende uma UF fica "Não se aplica" fora dela, sem abrir o portal. Hoje, só a falência pelo e-SAJ depende da UF; o TCE-SP vale para qualquer fornecedor, porque a consulta é exigida pelo órgão contratante de SP. As CNDs estaduais e municipais de outras UFs e municípios passam a vir do mapeamento colaborativo, pelas issues do repositório (RN-12).
 - **2026-11-12 — TCU sem navegador.** A página do TCU busca o resultado e o PDF numa API pública (`/api/rest/publico/certidoes/<CNPJ>`, com `Accept: application/pdf`). Pedir o PDF direto, sem Chromium, é mais simples e leve. Novo modo "consulta direta" na RN-09. No Windows da prefeitura, a consulta passa pelo proxy configurado no sistema, como a da BrasilAPI.
