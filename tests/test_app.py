@@ -468,3 +468,19 @@ def test_email_invalido_nao_substitui_o_salvo():
 def test_tela_abre_com_o_email_salvo():
     html = app.TELA.read_text(encoding="utf-8")
     assert "pywebviewready" in html and "email_salvo()" in html
+
+
+def test_filial_escolhida_passa_o_cnpj_da_matriz_para_a_sequencia():
+    filial = Empresa(FILIAL, "EMPRESA FICTICIA LTDA", "SP", "ATIVA", False)
+    recebidos = []
+
+    def obter(cnpj, ao_aguardar, sinal, matriz=None):
+        recebidos.append((cnpj, matriz))
+        return pathlib.Path("/tmp/cnd.pdf")
+
+    cnd = Item("cnd", "CND", "Receita", obter, "Cole {cnpj}.", precisa=("matriz",), aviso_matriz="Matriz {matriz}.")
+    api = criar_api(itens=[cnd], consultar=empresas(**{f"c{FILIAL}": filial, f"c{CNPJ}": matriz_sp(CNPJ)}))
+    api.identificar(FILIAL)
+    api.emitir(FILIAL)
+    api.emitir(CNPJ)
+    assert recebidos == [(FILIAL, CNPJ), (CNPJ, None)]

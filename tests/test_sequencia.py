@@ -3,7 +3,7 @@ import pathlib
 
 from certidoes import leitura
 from certidoes import sequencia as seq
-from certidoes.portais import esaj, tcesp, tcu
+from certidoes.portais import cnj, esaj, receita, tcesp, tcu
 from certidoes.portais.comum import NaoEmitida, Pedido, PortalErro
 from tests.conftest import pdf_com_texto
 
@@ -24,12 +24,23 @@ def obtem(caminho):
 def test_itens_seguem_a_ordem_da_rn01_com_o_modo_de_cada_portal():
     assert [(i.chave, i.modo) for i in seq.ITENS] == [
         ("cnd", seq.NAVEGADOR), ("crf", seq.NAVEGADOR), ("cndt", seq.AUTOMATIZADO), ("falencia", seq.AUTOMATIZADO),
-        ("sancoes", seq.DIRETO), ("apenados", seq.NAVEGADOR)]
+        ("sancoes", seq.DIRETO), ("improbidade", seq.DIRETO), ("apenados", seq.NAVEGADOR)]
 
 
 def test_sancoes_vem_do_tcu_sem_dados_extras():
     sancoes = {i.chave: i for i in seq.ITENS}["sancoes"]
     assert (sancoes.obter, sancoes.precisa) == (tcu.obter_consulta, ())
+
+
+def test_improbidade_vem_do_cnj_por_consulta_direta():
+    improbidade = {i.chave: i for i in seq.ITENS}["improbidade"]
+    assert (improbidade.obter, improbidade.precisa, improbidade.modo) == (cnj.obter_certidao, (), seq.DIRETO)
+
+
+def test_cnd_federal_pede_a_matriz_quando_o_cnpj_e_de_filial():
+    cnd = {i.chave: i for i in seq.ITENS}["cnd"]
+    assert (cnd.obter, cnd.precisa, cnd.aviso_matriz) == (receita.obter_cnd, ("matriz",), receita.AVISO_MATRIZ)
+    assert [i.chave for i in seq.ITENS if "matriz" in i.precisa] == ["cnd"]  # o CRF segue a filial
 
 
 def test_apenados_vem_do_tcesp_no_navegador_do_servidor():
@@ -254,7 +265,8 @@ def test_item_nao_obtido_fica_sem_situacao_e_validade():
 
 def test_itens_reais_tem_leitor():
     assert [i.ler for i in seq.ITENS] == [leitura.ler_cnd, leitura.ler_crf, leitura.ler_cndt, leitura.ler_falencia,
-                                          leitura.ler_sancoes_tcu, leitura.ler_apenados_tcesp]
+                                          leitura.ler_sancoes_tcu, leitura.ler_improbidade_cnj,
+                                          leitura.ler_apenados_tcesp]
 
 
 def espera_ate_pular(execucao_ref, chave):
@@ -486,19 +498,31 @@ def test_sancoes_nada_consta_mostram_cada_cadastro_e_a_data_da_consulta(tmp_path
     estado = _sancoes(tmp_path, TCU_CONSULTA)
     assert (estado["estado"], estado["situacao"], estado["validade"]) == (
         "Obtida", "Nada consta", "Não impressa (emitida em 12/11/2026)")
-    assert estado["mensagem"] == ("TCU (Licitantes Inidôneos): Nada consta. CNJ (CNIA, improbidade): Nada consta. "
+    assert estado["mensagem"] == ("TCU (Licitantes Inidôneos): Nada consta. "
+                                  "CNJ (CNIA, improbidade): Nada consta (confira o item de improbidade do CNJ). "
                                   "CEIS: Nada consta. CNEP: Nada consta.")
     assert estado["arquivo"] == tmp_path / "sancoes.pdf"
 
 
-def test_sancoes_com_cadastro_indisponivel_ficam_obtidas_para_conferir(tmp_path):
+def test_sancoes_com_cnj_indisponivel_seguem_nada_consta_e_apontam_o_item_do_cnj(tmp_path):
     from tests.conftest import TCU_CONSULTA
 
     linhas = tuple("Resultado da consulta: Sistema do CNJ esta indisponivel" if i == 13 else linha
                    for i, linha in enumerate(TCU_CONSULTA))
     estado = _sancoes(tmp_path, linhas)
+    assert (estado["estado"], estado["situacao"]) == ("Obtida", "Nada consta")
+    assert "CNJ (CNIA, improbidade): Sistema do CNJ esta indisponivel (confira o item de improbidade do CNJ)." \
+           in estado["mensagem"]
+
+
+def test_sancoes_com_cadastro_que_decide_indisponivel_ficam_obtidas_para_conferir(tmp_path):
+    from tests.conftest import TCU_CONSULTA
+
+    linhas = tuple("Resultado da consulta: Sistema indisponivel" if i == 17 else linha  # CEIS
+                   for i, linha in enumerate(TCU_CONSULTA))
+    estado = _sancoes(tmp_path, linhas)
     assert (estado["estado"], estado["situacao"]) == ("Obtida", "Conferir no PDF")
-    assert "CNJ (CNIA, improbidade): Sistema do CNJ esta indisponivel (consulta manual: https://www.cnj.jus.br/" \
+    assert "CEIS: Sistema indisponivel (consulta manual: https://portaldatransparencia.gov.br/sancoes/ceis)." \
            in estado["mensagem"]
 
 
@@ -546,3 +570,40 @@ def test_so_a_falencia_depende_da_uf_e_aponta_o_tribunal_da_sede():
     assert {i.chave: i.uf for i in seq.ITENS if i.uf} == {"falencia": "SP"}
     falencia = {i.chave: i for i in seq.ITENS}["falencia"]
     assert "art. 69, II" in falencia.fora_da_uf.format(uf="MG")
+
+
+def _execucao_cnd(dados, copiados):
+    def obter(cnpj, ao_aguardar, sinal, matriz=None):
+        copiados.append((cnpj, matriz))
+        ao_aguardar()
+        return pathlib.Path("/tmp/cnd.pdf")
+
+    cnd = seq.Item("cnd", "CND", "Receita", obter, "Cole o CNPJ {cnpj}.", seq.NAVEGADOR, precisa=("matriz",),
+                   aviso_matriz="Pedida com a matriz {matriz}.")
+    return seq.Execucao([cnd], "11222333000262", dados=dados)
+
+
+def test_filial_pede_a_cnd_com_o_cnpj_da_matriz_e_explica_na_tela():
+    copiados, instrucoes = [], []
+    execucao = _execucao_cnd({"matriz": "11222333000181"}, copiados)
+    original = execucao._marcar
+
+    def marcar(chave, estado, mensagem="", arquivo=None):
+        if estado == seq.AGUARDANDO_SERVIDOR:
+            instrucoes.append(mensagem)
+        original(chave, estado, mensagem, arquivo)
+
+    execucao._marcar = marcar
+    execucao.rodar()
+    assert copiados == [("11222333000262", "11222333000181")]
+    assert instrucoes == ["Cole o CNPJ 11.222.333/0001-81. Pedida com a matriz 11.222.333/0001-81."]
+    estado = execucao.itens()[0]
+    assert (estado["estado"], estado["mensagem"]) == ("Obtida", "Pedida com a matriz 11.222.333/0001-81.")
+
+
+def test_matriz_pede_a_cnd_com_o_proprio_cnpj_sem_aviso():
+    copiados = []
+    execucao = _execucao_cnd({"matriz": None}, copiados)
+    execucao.rodar()
+    assert copiados == [("11222333000262", None)]
+    assert execucao.itens()[0]["mensagem"] == ""

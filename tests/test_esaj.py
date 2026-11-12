@@ -41,6 +41,15 @@ def test_certidao_ja_liberada_e_baixada_logo_apos_o_pedido(portal, tmp_path):
     assert avisos == ["Pedido nº 101890915 aceito. Consultando se a certidão já foi liberada..."]
 
 
+def test_certidao_aberta_em_janela_nova_com_pdf_inline_tambem_e_baixada(portal, tmp_path):
+    # No Chromium visível, o e-SAJ real abre a certidão numa janela nova, sem download.
+    arquivo = pedir(portal, "/esaj", consulta="/esaj-consulta-janela", pasta_base=tmp_path,
+                    agora=dt.datetime(2026, 11, 12, 15, 0, 0))
+    assert arquivo == tmp_path / CNPJ / "falencia-20261112-150000.pdf"
+    assert "VERIFICOU NADA CONSTAR" in leitura.normalizar(texto_do_pdf(arquivo.read_bytes()))
+    assert portal.consultas == [ESAJ_CONSULTA_ESPERADA]  # uma consulta só: não repete depois de achar o PDF
+
+
 def test_certidao_nao_liberada_tenta_algumas_vezes_e_fica_o_pedido(portal, tmp_path):
     resultado = pedir(portal, "/esaj", pasta_base=tmp_path, consultas=3, intervalo_consulta_s=0.2)
     assert isinstance(resultado, Pedido) and resultado.numero == "101890915"

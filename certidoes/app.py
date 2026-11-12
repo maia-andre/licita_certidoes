@@ -29,8 +29,8 @@ def _em_segundo_plano(funcao) -> None:
     threading.Thread(target=funcao, daemon=True).start()
 
 
-AVISO_FILIAL = ("Você escolheu a filial. A certidão de falência deve seguir o distribuidor da sede "
-                "(art. 69, II, da Lei 14.133/2021).")
+AVISO_FILIAL = ("Você escolheu a filial. A CND federal será pedida com o CNPJ da matriz, que a Receita exige, e a "
+                "certidão de falência deve seguir o distribuidor da sede (art. 69, II, da Lei 14.133/2021).")
 EM_ANDAMENTO = "Já existe uma consulta em andamento."
 EMAIL_INVALIDO = ("Informe um e-mail válido para o pedido de falência no e-SAJ: o TJSP envia para ele as "
                   "instruções de emissão.")
@@ -91,7 +91,8 @@ class Api:
                 return {"ok": False, "mensagem": EM_ANDAMENTO}
             if precisa_email and not email_valido(email):
                 return {"ok": False, "mensagem": EMAIL_INVALIDO, "campo": "email"}
-            dados = {"razao_social": escolhida.razao_social, "email": email.strip() if precisa_email else None}
+            dados = {"razao_social": escolhida.razao_social, "email": email.strip() if precisa_email else None,
+                     "matriz": None if escolhida.matriz else cnpj_da_matriz(cnpj)}
             self._rodando = True
             self._execucao = Execucao(self._itens, cnpj, dados=dados, uf=escolhida.uf)
             execucao = self._execucao

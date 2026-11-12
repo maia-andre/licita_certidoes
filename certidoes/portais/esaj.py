@@ -23,6 +23,7 @@ __all__ = ["obter_pedido_falencia", "INSTRUCAO", "email_valido"]
 
 URL = "https://esaj.tjsp.jus.br/sco/abrirCadastro.do"
 URL_DOWNLOAD = "https://esaj.tjsp.jus.br/sco/abrirDownload.do"
+ROTA_CERTIDAO = "**/realizarDownload.do*"  # resposta de "Consultar" em "Visualizar Certidão"
 CONSULTAS = 3  # tentativas em "Visualizar Certidão" logo depois do pedido
 INTERVALO_CONSULTA_S = 10
 TEMPO_DOWNLOAD_MS = 15 * 1000
@@ -117,13 +118,51 @@ def _consultar_uma_vez(pagina, pedido, cnpj, url_download, tempo_download_ms):
     campo_cnpj = pagina.locator("[id='identity.nuCnpjFormatado']")
     campo_cnpj.click()
     campo_cnpj.press_sequentially(cnpj, delay=30)
+    # Com o Chromium visível, o e-SAJ abre a certidão numa janela nova (PDF "inline"), e o visualizador de PDF
+    # do navegador esconde os bytes da resposta. Por isso a requisição da certidão é interceptada: o programa
+    # busca a resposta, guarda o PDF e a entrega à janela sem mudança. Sem janela visível, o PDF chega como
+    # download. Vale o que vier primeiro.
+    contexto = pagina.context
+    baixados, respostas, janelas = [], [], []
+
+    def ao_responder(rota):
+        resposta = rota.fetch()
+        if "application/pdf" in (resposta.headers.get("content-type") or "").lower():
+            respostas.append(resposta.body())
+        rota.fulfill(response=resposta)
+
+    def ao_baixar(download):
+        baixados.append(download)
+
+    def ao_abrir(janela):
+        janelas.append(janela)
+        janela.on("download", ao_baixar)
+
+    contexto.route(ROTA_CERTIDAO, ao_responder)
+    contexto.on("page", ao_abrir)
+    pagina.on("download", ao_baixar)
     try:
-        with pagina.expect_download(timeout=tempo_download_ms) as baixado:
-            pagina.locator("#pbConsultar").click()
-    except PlaywrightTimeout:
-        return None  # sem download: certidão ainda não liberada (ou o portal mostrou outra mensagem)
-    dados = pathlib.Path(baixado.value.path()).read_bytes()
-    return dados if dados[:4] == b"%PDF" else None
+        pagina.locator("#pbConsultar").click()
+        fim = time.monotonic() + tempo_download_ms / 1000
+        while time.monotonic() < fim:
+            dados = None
+            if baixados:
+                dados = pathlib.Path(baixados[0].path()).read_bytes()
+            elif respostas:
+                dados = respostas[0]
+            if dados is not None:
+                return dados if dados[:4] == b"%PDF" else None
+            pagina.wait_for_timeout(250)
+        return None  # sem PDF: certidão ainda não liberada (ou o portal mostrou outra mensagem)
+    finally:
+        contexto.unroute(ROTA_CERTIDAO, ao_responder)
+        contexto.remove_listener("page", ao_abrir)
+        pagina.remove_listener("download", ao_baixar)
+        for janela in janelas:
+            try:
+                janela.close()
+            except PlaywrightError:
+                pass  # o servidor já fechou
 
 
 def _baixar_certidao(pagina, pedido, cnpj, url_download, sinal, consultas, intervalo_s,

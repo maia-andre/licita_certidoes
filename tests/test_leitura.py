@@ -214,21 +214,28 @@ de junho de 2017, Lei nº 13.726, de 8 de outubro de 2018, Decreto nº 8.638 de 
 TCU_NADA_CONSTA = TCU_REAL.replace("Sistema do CNJ está indisponível", "Nada Consta")
 
 
-def test_sancoes_real_com_cnj_indisponivel_pede_conferencia_e_aponta_o_cadastro():
+def test_sancoes_real_com_cnj_indisponivel_decidem_por_tcu_ceis_e_cnep():
+    # O CNJ tem item próprio; aqui ele só aparece na mensagem, apontando para esse item.
     lido = lt.ler(lt.ler_sancoes_tcu, TCU_REAL, CNPJ)
-    assert (lido.situacao, lido.validade, lido.emissao) == (lt.CONFERIR, None, dt.date(2026, 11, 12))
+    assert (lido.situacao, lido.validade, lido.emissao) == (lt.NADA_CONSTA, None, dt.date(2026, 11, 12))
     assert lido.detalhe == (
         "TCU (Licitantes Inidôneos): Nada consta. "
-        "CNJ (CNIA, improbidade): Sistema do CNJ está indisponível "
-        "(consulta manual: https://www.cnj.jus.br/improbidade_adm/consultar_requerido.php). "
+        "CNJ (CNIA, improbidade): Sistema do CNJ está indisponível (confira o item de improbidade do CNJ). "
         "CEIS: Nada consta. CNEP: Nada consta.")
 
 
 def test_sancoes_nada_consta_nos_quatro_cadastros():
     lido = lt.ler(lt.ler_sancoes_tcu, TCU_NADA_CONSTA, CNPJ)
     assert (lido.situacao, lido.emissao) == (lt.NADA_CONSTA, dt.date(2026, 11, 12))
-    assert lido.detalhe == ("TCU (Licitantes Inidôneos): Nada consta. CNJ (CNIA, improbidade): Nada consta. "
+    assert lido.detalhe == ("TCU (Licitantes Inidôneos): Nada consta. "
+                            "CNJ (CNIA, improbidade): Nada consta (confira o item de improbidade do CNJ). "
                             "CEIS: Nada consta. CNEP: Nada consta.")
+
+
+def test_sancoes_com_cadastro_desconhecido_pedem_conferencia():
+    novo = "Órgão Gestor: Outro\nCadastro: Cadastro Novo\nResultado da consulta: Nada Consta\nObs:"
+    texto = TCU_NADA_CONSTA.replace("Obs:", novo)
+    assert lt.ler_sancoes_tcu(texto).situacao == lt.CONFERIR
 
 
 def test_sancoes_com_registro_pede_conferencia_com_o_link_do_cadastro():
@@ -291,3 +298,33 @@ def test_apenados_tcesp_com_texto_desconhecido_pede_conferencia():
 def test_apenados_tcesp_de_outro_cnpj_ou_outro_documento_nao_sao_lidos():
     assert lt.ler(lt.ler_apenados_tcesp, TCESP_REAL, "99888777000166") == lt.Leitura()
     assert lt.ler_apenados_tcesp(CNDT_NEGATIVA) == lt.Leitura()
+
+
+# Certidão do CNIA (CNJ): texto real de 12/11/2026 (pypdf), com CNPJ fictício.
+CNJ_REAL = """Certidão Negativa
+Certifico que nesta data (12/11/2026 às 17:24) NÃO CONSTA no Cadastro Nacional de Condenações Cíveis por Ato de
+Improbidade Administrativa e Inelegibilidade registros de condenação com trânsito em julgado ou sanção ativa
+quanto ao CNPJ nº 11.222.333/0001-81.
+A condenação por atos de improbidade administrativa não implica automático e necessário reconhecimento da
+inelegibilidade do condenado. Para consultas sobre inelegibilidade acesse portal do TSE em http://divulgacandcontas.tse.jus.br/
+Esta certidão é expedida gratuitamente.
+Sua autenticidade pode ser por meio do número de controle ZPRN.NZEI.9MH9.D776 no seguinte endereço:
+https://www.cnj.jus.br/improbidade_adm/autenticar
+"""
+
+
+def test_improbidade_cnj_real_nada_consta_com_data_de_emissao():
+    lido = lt.ler(lt.ler_improbidade_cnj, CNJ_REAL, CNPJ)
+    assert lido == lt.Leitura(lt.NADA_CONSTA, None, dt.date(2026, 11, 12))
+
+
+def test_improbidade_cnj_sem_certidao_negativa_pede_conferencia():
+    texto = CNJ_REAL.replace("Certidão Negativa", "Certidão").replace("NÃO CONSTA no", "CONSTA no")
+    lido = lt.ler_improbidade_cnj(texto)
+    assert (lido.situacao, lido.emissao) == (lt.CONFERIR, dt.date(2026, 11, 12))
+    assert "registros" in lido.detalhe
+
+
+def test_improbidade_cnj_de_outro_cnpj_ou_outro_documento_nao_e_lida():
+    assert lt.ler(lt.ler_improbidade_cnj, CNJ_REAL, "99888777000166") == lt.Leitura()
+    assert lt.ler_improbidade_cnj(CNDT_NEGATIVA) == lt.Leitura()

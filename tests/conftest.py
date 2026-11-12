@@ -97,7 +97,7 @@ const t = setInterval(() => {
 
 # "Visualizar Certidão": número, data (com máscara), pessoa e CNPJ (com máscara). Sem captcha, como o real.
 ESAJ_CONSULTA = """<!doctype html><html><body>
-<form action="{acao}" method="post">
+<form action="{acao}" method="post" target="{alvo}">
   <input id="identity.nuPedido" name="entity.nuPedido" type="text">
   <input id="identity.dtPedido" name="entity.dtPedido" type="text">
   <input type="radio" id="tpPessoaF" name="entity.tpPessoa" value="F">
@@ -181,6 +181,20 @@ TCESP_CERTIDAO = (
 )
 
 
+# Certidões do CNIA (CNJ): a negativa segue o texto real de 12/11/2026, em ASCII, com CNPJ fictício.
+CNJ_NEGATIVA = (
+    "Certidao Negativa",
+    "Certifico que nesta data (12/11/2026 as 17:24) NAO CONSTA no Cadastro Nacional de Condenacoes Civeis por Ato de",
+    "Improbidade Administrativa e Inelegibilidade registros de condenacao com transito em julgado ou sancao ativa",
+    "quanto ao CNPJ no 11.222.333/0001-81.",
+)
+CNJ_POSITIVA = (
+    "Certidao",
+    "Certifico que nesta data (12/11/2026 as 17:24) CONSTA no Cadastro Nacional de Condenacoes Civeis por Ato de",
+    "Improbidade Administrativa e Inelegibilidade registro de condenacao quanto ao CNPJ no 11.222.333/0001-81.",
+)
+
+
 class _Handler(http.server.BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
@@ -193,10 +207,10 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(dados)
 
-    def _anexo(self, dados, tipo="application/pdf"):
+    def _anexo(self, dados, tipo="application/pdf", disposicao="attachment"):
         self.send_response(200)
         self.send_header("Content-Type", tipo)
-        self.send_header("Content-Disposition", 'attachment; filename="certidao.pdf"')
+        self.send_header("Content-Disposition", f'{disposicao}; filename="certidao.pdf"')
         self.send_header("Content-Length", str(len(dados)))
         self.end_headers()
         self.wfile.write(dados)
@@ -219,9 +233,12 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         elif url.path == "/esaj-parado":
             self._html(ESAJ_FORMULARIO.format(aviso="", script=""))
         elif url.path == "/esaj-consulta":
-            self._html(ESAJ_CONSULTA.format(acao="/esaj-baixar"))
+            self._html(ESAJ_CONSULTA.format(acao="/esaj-baixar", alvo="_self"))
+        elif url.path == "/esaj-consulta-janela":
+            # Como o e-SAJ real: a certidão abre numa janela nova, com o PDF "inline".
+            self._html(ESAJ_CONSULTA.format(acao="/sco/realizarDownload.do", alvo="_blank"))
         elif url.path == "/esaj-consulta-pendente":
-            self._html(ESAJ_CONSULTA.format(acao="/esaj-pendente"))
+            self._html(ESAJ_CONSULTA.format(acao="/esaj-pendente", alvo="_self"))
         elif url.path.startswith(("/tcu/", "/tcu-erro/", "/tcu-html/")):
             self.server.tcu.append({"caminho": url.path, "accept": self.headers.get("Accept"),
                                     "agente": self.headers.get("User-Agent")})
@@ -231,6 +248,11 @@ class _Handler(http.server.BaseHTTPRequestHandler):
                 self._html("<html><body>Certidões APF</body></html>")
             else:
                 self._anexo(pdf_com_texto(*TCU_CONSULTA))
+        elif url.path.startswith(("/cnj/", "/cnj-registros/", "/cnj-estranho/")) and url.path.endswith("/certidao.php"):
+            consulta = dict(urllib.parse.parse_qsl(url.query))
+            self.server.cnj.append({"certidao": consulta, "agente": self.headers.get("User-Agent")})
+            linhas = CNJ_NEGATIVA if consulta.get("tipoCertidao") == "N" else CNJ_POSITIVA
+            self._anexo(pdf_com_texto(*linhas), tipo="application/x-download")
         elif url.path == "/sem-formulario":
             self._html("<html><body>Portal em manutenção</body></html>")
         else:
@@ -238,11 +260,16 @@ class _Handler(http.server.BaseHTTPRequestHandler):
 
     def do_POST(self):
         corpo = self.rfile.read(int(self.headers.get("Content-Length", 0))).decode()
-        if self.path in ("/esaj-baixar", "/esaj-pendente"):
+        if self.path in ("/esaj-baixar", "/esaj-pendente", "/sco/realizarDownload.do"):
             self.server.consultas.append(dict(urllib.parse.parse_qsl(corpo, keep_blank_values=True)))
         if self.path == "/esaj-baixar":
             if self.server.consultas[-1] == ESAJ_CONSULTA_ESPERADA:
                 self._anexo(pdf_com_texto(*ESAJ_CERTIDAO))
+            else:
+                self._html("<p>Pedido não encontrado.</p>")
+        elif self.path == "/sco/realizarDownload.do":
+            if self.server.consultas[-1] == ESAJ_CONSULTA_ESPERADA:
+                self._anexo(pdf_com_texto(*ESAJ_CERTIDAO), disposicao="inline")
             else:
                 self._html("<p>Pedido não encontrado.</p>")
         elif self.path == "/esaj-pendente":
@@ -251,6 +278,12 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             self._anexo(PDF)
         elif self.path == "/html":
             self._anexo(b"<html>nao sou pdf</html>", "text/html")
+        elif self.path.split("?")[0].endswith("/consultar_requerido.php"):
+            base = self.path.split("/")[1]
+            dados = urllib.parse.parse_qs(corpo)
+            self.server.cnj.append({"verificacao": dados, "agente": self.headers.get("User-Agent")})
+            resposta = {"cnj": "''", "cnj-registros": "'2'", "cnj-estranho": "['<table>...</table>']"}[base]
+            self._html(f"<html>+:var res = {resposta}; res;</html>")
         elif self.path == "/esaj-enviar":
             self._html(ESAJ_RESULTADO)
         elif self.path == "/erro-captcha":
@@ -266,6 +299,7 @@ def portal():
     servidor.registro = None
     servidor.consultas = []
     servidor.tcu = []
+    servidor.cnj = []
     thread = threading.Thread(target=servidor.serve_forever, daemon=True)
     thread.start()
     servidor.url = f"http://127.0.0.1:{servidor.server_address[1]}"

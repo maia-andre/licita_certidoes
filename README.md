@@ -34,7 +34,7 @@ O Certidões do Fornecedor cuida da parte repetitiva e deixa com o servidor o qu
 
 ## Certidões disponíveis
 
-Seis certidões em sequência, numa só tela, com o estado de cada uma atualizado durante a consulta.
+Sete certidões em sequência, numa só tela, com o estado de cada uma atualizado durante a consulta.
 
 | # | Certidão | Portal | Modo de acesso | Captcha | O que a tela mostra |
 |:-:|---|---|---|---|---|
@@ -42,7 +42,8 @@ Seis certidões em sequência, numa só tela, com o estado de cada uma atualizad
 | 2 | CRF FGTS | Caixa | Navegador do servidor | sim | Situação (Regular) e validade |
 | 3 | CNDT | TST | Automatizado | imagem | Situação e validade |
 | 5 | Falência, concordatas e recuperações | e-SAJ/TJSP | Automatizado | reCAPTCHA | "Nada consta" e data de emissão, ou "Pedido feito: acompanhar" |
-| 7 | Sanções: CEIS, CNEP, inidôneos do TCU e improbidade (CNJ) | Consulta Consolidada (TCU) | Consulta direta | nenhum | Resultado de cada cadastro e data da consulta |
+| 7 | Sanções: CEIS, CNEP e inidôneos do TCU | Consulta Consolidada (TCU) | Consulta direta | nenhum | Resultado de cada cadastro e data da consulta |
+| 10 | Improbidade administrativa (CNIA) | CNJ | Consulta direta | nenhum | "Nada consta" e data da consulta |
 | 8 | Apenados do TCE-SP | Sistema de Apenados (TCE-SP) | Navegador do servidor | Turnstile | "Nada consta" e validade |
 
 A numeração segue a lista da [especificação](docs/spec.md) (RN-01). Os itens 4, 6 e 9 estão [adiados](#caminho-para-as-demais-exigências).
@@ -50,7 +51,7 @@ A numeração segue a lista da [especificação](docs/spec.md) (RN-01). Os itens
 Em todas elas, o programa:
 
 - atende CNPJ de qualquer UF; a certidão cujo portal só atende SP (hoje, a falência pelo e-SAJ) fica "Não se aplica" fora de SP, com a indicação de onde obtê-la;
-- valida o CNPJ, numérico ou alfanumérico, antes de qualquer consulta externa, e identifica a empresa na BrasilAPI, com a escolha entre filial e matriz;
+- valida o CNPJ, numérico ou alfanumérico, antes de qualquer consulta externa, e identifica a empresa na BrasilAPI, com a escolha entre filial e matriz; para filial, pede a CND federal com o CNPJ da matriz, que a Receita exige, e o CRF com o da filial;
 - guarda o PDF em `Certidoes\<CNPJ>\` (no Windows, `C:\Users\<usuário>\Certidoes\`) e o abre pela tela;
 - lê do PDF a situação e a validade e avisa quando a certidão está vencida; na dúvida, mostra **"Conferir no PDF"** e nunca presume;
 - marca "Falha técnica" quando um portal falha e segue para a próxima certidão;
@@ -62,7 +63,7 @@ Cada portal aceita um tipo de acesso diferente. O programa usa um de três modos
 
 ```mermaid
 flowchart TB
-    subgraph D["Consulta direta · TCU"]
+    subgraph D["Consulta direta · TCU, CNJ"]
         D1[Programa pede o PDF<br/>à API pública] --> D2[PDF salvo,<br/>sem ação do servidor]
     end
     subgraph A["Automatizado · TST, e-SAJ"]
@@ -75,7 +76,7 @@ flowchart TB
 
 | Modo | Quando usamos | Portais |
 |---|---|---|
-| **Consulta direta** | O portal é público, não tem captcha e entrega o PDF por endereço próprio. O programa se identifica de forma genérica, sem dados do usuário. | TCU |
+| **Consulta direta** | O portal é público, não tem captcha e entrega o PDF por endereço próprio. O programa se identifica de forma genérica, sem dados do usuário. | TCU, CNJ |
 | **Automatizado** | O portal aceita navegador automatizado. O programa abre um Chromium visível, preenche o formulário e espera o servidor resolver o captcha. | TST, e-SAJ |
 | **Navegador do servidor** | O portal recusa navegador automatizado. O programa abre o portal no navegador normal do servidor e reconhece o PDF baixado pelo nome ou pelo texto e pelo CNPJ. | Receita, Caixa, TCE-SP |
 
@@ -87,6 +88,7 @@ flowchart TB
 - **TCE-SP:** o Cloudflare Turnstile falhou com o erro 600010 nas duas tentativas no Chromium automatizado. No navegador normal, funciona.
 - **TST e e-SAJ:** aceitam o Chromium do Playwright. No e-SAJ, o programa preenche o pedido; o servidor confere, resolve o reCAPTCHA e envia. Logo depois, o programa consulta o pedido e baixa a certidão, que costuma sair na hora quando nada consta.
 - **TCU:** a página da Consulta Consolidada busca o PDF numa API pública, sem captcha. O programa pede o PDF direto, sem abrir navegador.
+- **CNJ:** a consulta de improbidade não tem mais captcha. O programa faz a mesma verificação de condenações que a página faz e baixa a certidão. Virou item próprio porque o TCU respondeu "Sistema do CNJ está indisponível" em todas as 20 consultas da validação, enquanto o site do CNJ funcionava.
 - **Portal da Transparência:** não é usado. CEIS e CNEP vêm pelo TCU, porque o portal da CGU pede captcha (AWS WAF).
 
 </details>
@@ -182,13 +184,13 @@ As notas de cada versão estão em [Releases](https://github.com/maia-andre/lici
 |---|---|---|
 | **v0.1.0** · Fluxo básico | 11/11/2026 | CND federal, CRF e CNDT em sequência; leitura de situação e validade; identificação pela BrasilAPI; pular e repetir |
 | **v0.2.0** · Certidões das minutas | 12/11/2026 | Falência no e-SAJ, sanções pelo TCU e apenados do TCE-SP |
-| **v1.0.0** · Validada *(planejada)* | — | Validação com 10 CNPJs reais e tela revisada |
+| **v1.0.0** · Validada *(planejada)* | — | Correções da validação com 10 CNPJs reais (improbidade no CNJ, CND de filial pela matriz, falência em janela nova) e tela revisada |
 
 | Marco | Incrementos | Situação |
 |---|---|---|
 | **1 · Fluxo básico** | INC-01 a INC-05 e INC-07 | Concluído em 11/11/2026 |
 | **2 · Certidões das minutas** | INC-08, INC-11 e INC-12 | Concluído em 12/11/2026 |
-| **3 · Validação e v1.0** | INC-10 e revisão da tela | Próximo |
+| **3 · Validação e v1.0** | INC-10 (concluído), INC-14 (concluído) e revisão da tela | Em andamento |
 | **4 · Certidões com login** | INC-06 (SIDEB), INC-09 (eproc) e INC-13 (CND de SJC) | Adiado: gov.br e sistema municipal em implantação |
 
 <details>
@@ -205,10 +207,11 @@ As notas de cada versão estão em [Releases](https://github.com/maia-andre/lici
 | 07 | Pular e repetir itens | Refazer só o item que falhou | Concluído |
 | 08 | Falência no e-SAJ | Pedido enviado e certidão baixada, se já liberada | Concluído |
 | 09 | Complemento no eproc | Pedido com gov.br | Adiado: exige login gov.br |
-| 10 | Validação com CNPJs reais | Resultado de 10 CNPJs conferido com os PDFs | Próximo |
+| 10 | Validação com CNPJs reais | Resultado de 10 CNPJs conferido com os PDFs | Concluído |
 | 11 | Sanções no TCU | CEIS, CNEP, TCU e CNJ num PDF, com o resultado de cada cadastro | Concluído |
 | 12 | Apenados do TCE-SP | Certidão no navegador do servidor, com a situação lida | Concluído |
 | 13 | CND municipal de SJC | CND mobiliária para empresas com sede em SJC | Adiado: sistema em implantação |
+| 14 | Improbidade no CNJ | Certidão do CNIA por consulta direta | Concluído |
 
 </details>
 

@@ -140,23 +140,38 @@ def _cadastro_tcu(orgao: str, cadastro: str) -> tuple[str, str | None]:
     return f"{orgao} ({cadastro})", None
 
 
+# O CNJ tem item próprio (ler_improbidade_cnj): na consulta do TCU, ele só aparece na mensagem.
+_DECIDEM_TCU = ("TCU (Licitantes Inidôneos)", "CEIS", "CNEP")
+_NOME_CNJ = "CNJ (CNIA, improbidade)"
+
+
 def ler_sancoes_tcu(texto: str) -> Leitura:
-    """Consulta Consolidada de Pessoa Jurídica: "Nada consta" só se os quatro cadastros disserem "Nada Consta"."""
+    """Consulta Consolidada: "Nada consta" só se TCU, CEIS e CNEP aparecerem e disserem "Nada Consta".
+
+    O resultado do CNJ fica só na mensagem: a integração do TCU com o CNJ estava fora em todas as consultas
+    de 12/11/2026, e o CNJ é consultado direto no item de improbidade.
+    """
     t = normalizar(texto)
     if "CONSULTA CONSOLIDADA DE PESSOA JURIDICA" not in t:
         return Leitura()
-    partes, nomes, todos_nada_consta = [], set(), True
+    partes, nada_consta = [], {}
     for bloco in _BLOCO_TCU.finditer(" ".join(texto.split())):
         nome, link = _cadastro_tcu(bloco["orgao"], bloco["cadastro"])
         resultado = bloco["resultado"].strip().rstrip(".")
-        nomes.add(nome)
-        if normalizar(resultado) == "NADA CONSTA":
+        livre = normalizar(resultado) == "NADA CONSTA"
+        if nome in nada_consta:  # cadastro repetido: documento fora do padrão
+            nada_consta[nome] = False
+        else:
+            nada_consta[nome] = livre
+        if nome == _NOME_CNJ:
+            partes.append(f"{nome}: {'Nada consta' if livre else resultado} (confira o item de improbidade do CNJ).")
+        elif livre:
             partes.append(f"{nome}: Nada consta.")
         else:
-            todos_nada_consta = False
             partes.append(f"{nome}: {resultado}" + (f" (consulta manual: {link})." if link else "."))
-    esperados = {nome for _, nome, _ in _CADASTROS_TCU}
-    situacao = NADA_CONSTA if todos_nada_consta and nomes == esperados and len(partes) == 4 else CONFERIR
+    decidem = all(nada_consta.get(nome) is True for nome in _DECIDEM_TCU)
+    desconhecidos = set(nada_consta) - set(_DECIDEM_TCU) - {_NOME_CNJ}
+    situacao = NADA_CONSTA if decidem and not desconhecidos else CONFERIR
     emissao = _data_unica(t, _DATA + r" \d{2}:\d{2}:\d{2}")
     return Leitura(situacao, None, emissao, " ".join(partes) or None)
 
@@ -172,6 +187,17 @@ def ler_apenados_tcesp(texto: str) -> Leitura:
     if re.search(r"\bNAO CONSTAM, ATE A PRESENTE DATA, \d{2}/\d{2}/\d{4}\b.*?\bIMPEDIMENTOS DE LICITACAO", t):
         return Leitura(NADA_CONSTA, validade)
     return Leitura(CONFERIR, validade)
+
+
+def ler_improbidade_cnj(texto: str) -> Leitura:
+    """Certidão do CNIA (CNJ): "Nada consta" só na "Certidão Negativa" que diz "NÃO CONSTA"; sem validade impressa."""
+    t = normalizar(texto)
+    if "CADASTRO NACIONAL DE CONDENACOES CIVEIS POR ATO DE IMPROBIDADE" not in t:
+        return Leitura()
+    emissao = _data_unica(t, r"NESTA DATA \(" + _DATA)
+    if t.startswith("CERTIDAO NEGATIVA") and "NAO CONSTA NO CADASTRO NACIONAL DE CONDENACOES" in t:
+        return Leitura(NADA_CONSTA, None, emissao)
+    return Leitura(CONFERIR, None, emissao, "A certidão do CNJ lista registros: confira o PDF.")
 
 
 def ler(leitor, texto: str, cnpj: str) -> Leitura:

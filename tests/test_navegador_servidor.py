@@ -192,3 +192,13 @@ def test_primeira_acao_do_servidor_vale():
     with pytest.raises(NaoEmitida, match="vale"):
         outro.verificar()
     SinalServidor().verificar()  # sem ação: não levanta nada
+
+
+def test_filial_copia_o_cnpj_da_matriz_e_guarda_o_pdf_na_pasta_da_filial(pastas):
+    downloads, certidoes = pastas
+    filial, matriz = "11222333000262", CNPJ
+    navegador, copiados = Navegador(downloads, nome=f"Certidao-{matriz}.pdf"), []
+    arquivo = receita.obter_cnd(filial, matriz=matriz, pasta_base=certidoes, pasta=downloads, abrir_url=navegador,
+                                copiar=copiados.append, tempo_limite_s=3, intervalo_s=0.05, agora=AGORA)
+    assert copiados == [matriz]
+    assert arquivo == certidoes / filial / "cnd-20261111-154000.pdf"

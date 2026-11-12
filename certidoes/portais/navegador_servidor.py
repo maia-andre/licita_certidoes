@@ -134,13 +134,17 @@ def obter_pelo_navegador(
     tempo_limite_s=TEMPO_LIMITE_S,
     intervalo_s=INTERVALO_S,
     agora=None,
+    cnpj_portal=None,
 ) -> pathlib.Path:
-    """Abre `url` no navegador do servidor e move o PDF baixado para a pasta do CNPJ."""
+    """Abre `url` no navegador do servidor e move o PDF baixado para a pasta do CNPJ.
+
+    `cnpj_portal` é o CNPJ copiado para o portal, quando difere do consultado (CND federal de filial: matriz).
+    """
     pasta = pathlib.Path(pasta) if pasta else pasta_downloads()
     if not pasta.is_dir():
         raise PortalErro(f"Pasta Downloads não encontrada: {pasta}")
     desde = time.time()
-    copiar(cnpj)
+    copiar(cnpj_portal or cnpj)
     if not abrir_url(url):
         raise PortalErro(f"Não foi possível abrir o portal {nome_portal} no navegador.")
     if ao_aguardar:

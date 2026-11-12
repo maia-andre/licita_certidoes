@@ -8,7 +8,7 @@ from typing import Callable
 from certidoes import leitura
 from certidoes.cnpj import formatar
 from certidoes.pdf import texto_do_pdf
-from certidoes.portais import caixa, esaj, receita, tcesp, tcu, tst
+from certidoes.portais import caixa, cnj, esaj, receita, tcesp, tcu, tst
 from certidoes.portais.comum import NaoEmitida, Pedido, PortalErro, Pulada, SinalServidor
 
 AGUARDANDO = "Aguardando"
@@ -45,6 +45,8 @@ class Item:
     precisa: tuple = ()
     uf: str | None = None  # UF atendida pelo portal; None = qualquer UF (REQ-04)
     fora_da_uf: str = ""  # mensagem de "Não se aplica"; aceita {uf}
+    # Com "matriz" em `precisa`, filial é consultada pelo CNPJ da matriz (RN-07); esta mensagem aceita {matriz}.
+    aviso_matriz: str = ""
 
 
 def aplica(item: Item, uf: str | None) -> bool:
@@ -54,15 +56,18 @@ def aplica(item: Item, uf: str | None) -> bool:
 
 # Ordem da RN-01. Adiados (RN-10): Certidão Única estadual (item 4), eproc (item 6) e CND de SJC (item 9).
 ITENS = (
-    Item("cnd", "CND federal", "Receita Federal", receita.obter_cnd, receita.INSTRUCAO, NAVEGADOR, leitura.ler_cnd),
+    Item("cnd", "CND federal", "Receita Federal", receita.obter_cnd, receita.INSTRUCAO, NAVEGADOR, leitura.ler_cnd,
+         precisa=("matriz",), aviso_matriz=receita.AVISO_MATRIZ),
     Item("crf", "CRF FGTS", "Caixa", caixa.obter_crf, caixa.INSTRUCAO, NAVEGADOR, leitura.ler_crf),
     Item("cndt", "CNDT", "TST", tst.obter_cndt, tst.INSTRUCAO, AUTOMATIZADO, leitura.ler_cndt),
     Item("falencia", "Falência, concordatas e recuperações", "e-SAJ/TJSP", esaj.obter_pedido_falencia,
          esaj.INSTRUCAO, AUTOMATIZADO, leitura.ler_falencia, precisa=("razao_social", "email", "avisar"), uf="SP",
          fora_da_uf="CNPJ de {uf}: o e-SAJ do TJSP não emite esta certidão. Peça-a ao distribuidor do Tribunal de "
                     "Justiça da sede (art. 69, II, da Lei 14.133/2021)."),
-    Item("sancoes", "Sanções: TCU, CNJ, CEIS e CNEP", "TCU", tcu.obter_consulta, tcu.INSTRUCAO, DIRETO,
+    Item("sancoes", "Sanções: TCU, CEIS e CNEP", "TCU", tcu.obter_consulta, tcu.INSTRUCAO, DIRETO,
          leitura.ler_sancoes_tcu),
+    Item("improbidade", "Improbidade (CNJ)", "CNJ", cnj.obter_certidao, cnj.INSTRUCAO, DIRETO,
+         leitura.ler_improbidade_cnj),
     Item("apenados", "Apenados do TCE-SP", "TCE-SP", tcesp.obter_certidao, tcesp.INSTRUCAO, NAVEGADOR,
          leitura.ler_apenados_tcesp),
 )
@@ -141,9 +146,11 @@ class Execucao:
         with self._trava:
             self._sinais[item.chave] = sinal
         self._marcar(item.chave, EM_ANDAMENTO)
-        instrucao = item.instrucao.format(cnpj=formatar(self._cnpj))
+        matriz = self._dados.get("matriz") if "matriz" in item.precisa else None
+        aviso_matriz = item.aviso_matriz.format(matriz=formatar(matriz)) if matriz else ""
+        instrucao = " ".join(filter(None, [item.instrucao.format(cnpj=formatar(matriz or self._cnpj)), aviso_matriz]))
         try:
-            extras = {nome: self._dados[nome] for nome in item.precisa if nome != "avisar"}
+            extras = {nome: self._dados.get(nome) for nome in item.precisa if nome != "avisar"}
             if "avisar" in item.precisa:
                 extras["avisar"] = lambda mensagem: self._marcar(item.chave, EM_ANDAMENTO, mensagem)
             resultado = item.obter(
@@ -164,7 +171,7 @@ class Execucao:
             if isinstance(resultado, Pedido):
                 self._marcar(item.chave, PEDIDO_FEITO, _mensagem_pedido(resultado))
             else:
-                self._marcar(item.chave, OBTIDA, "", resultado)
+                self._marcar(item.chave, OBTIDA, aviso_matriz, resultado)
                 self._registrar_leitura(item, resultado)
         finally:
             with self._trava:

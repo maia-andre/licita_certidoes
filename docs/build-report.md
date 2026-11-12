@@ -1,35 +1,39 @@
 # Build report — 2026-11-12
-Spec: docs/spec.md, versão 1.9
-Incremento: INC-12 — Apenados do TCE-SP
+Spec: docs/spec.md, versão 1.12
+Incremento: INC-10 — Validação com 10 CNPJs reais (com as correções que ela exigiu e o INC-14)
 Rodada: construção
-Testes: 246 passando / 246 total — `.venv\Scripts\python -m pytest -q` (Windows 11, Python 3.14.6)
+Testes: 268 passando / 268 total — `.venv\Scripts\python -m pytest -q` (Windows 11, Python 3.14.6); também no GitHub Actions
 
-## Requisitos atendidos
-- **REQ-17** — Atendido — novo portal `certidoes/portais/tcesp.py`, no modo "navegador do servidor" (RN-09).
-  - `obter_certidao` abre no navegador padrão o formulário "Gerar Certidão" do TCE-SP e deixa o CNPJ na área de transferência.
-  - O servidor cola o CNPJ, clica em "Gerar", conclui a verificação (Turnstile), clica em "OK" e baixa o PDF pelo ícone.
-  - O programa reconhece o PDF em Downloads pelo texto "Certidão de Apenados" e pelo CNPJ, e não pelo nome ("Certidão Apenados.pdf", com sufixo se repetido). Em seguida, guarda o arquivo como `apenados-tcesp-<data-hora>.pdf` na pasta do CNPJ.
+## Correções feitas a partir da validação
+- **REQ-12 — Falência aberta em janela nova.**
+  - **O que acontecia:** no Chromium visível, o e-SAJ abre a certidão liberada numa janela nova, no visualizador de PDF, sem download. O programa só esperava download, consultava 3 vezes e deixava o item em "Pedido feito: acompanhar".
+  - **Correção:** `esaj._consultar_uma_vez` intercepta a resposta de `realizarDownload.do` (`context.route`), guarda os bytes do PDF e entrega a resposta à janela sem mudança. Depois fecha a janela que o portal abriu. O download continua aceito.
+  - **Teste:** `tests/test_esaj.py::test_certidao_aberta_em_janela_nova_com_pdf_inline_tambem_e_baixada`, com um portal falso que abre a certidão em janela nova.
+- **REQ-19 / RN-11 — Improbidade no CNJ (INC-14).**
+  - **Novo portal `certidoes/portais/cnj.py`, em consulta direta:**
+    1. verifica as condenações com a mesma chamada da página do CNJ (`verificaRequeridoPossuiCertidao`);
+    2. baixa a "Certidão Negativa" (`certidao.php?tipoCertidao=N`), ou a certidão com registros (`P`) quando há condenações.
 
-  `leitura.ler_apenados_tcesp` lê a certidão:
-  - "Nada consta" quando ela diz "NÃO constam, até a presente data, <data>, (…) IMPEDIMENTOS DE LICITAÇÃO";
-  - "Conferir no PDF" quando lista impedimentos ("CONSTA(M)", do modelo do portal), com aviso na mensagem;
-  - "Conferir no PDF" também para qualquer outro texto;
-  - a validade é a data de "válido até" (RN-04).
-
-  Testes:
-  - `tests/test_tcesp.py` (7);
-  - `tests/test_leitura.py::test_apenados_*` (4, um sobre o texto real);
-  - `tests/test_sequencia.py` (ordem e modo, item real, leitura com "Vencida" no dia seguinte).
-- **RN-03 / RN-04** — Atualizadas na spec 1.9: "Nada consta" para apenados; validade impressa, igual à data da consulta.
-
-## Casos extremos cobertos
-- **CE-15** — Ocorreu: o Turnstile recusou o Chromium do Playwright (erro 600010) nas duas tentativas assistidas. O item passou ao modo navegador do servidor, sem tentativa de contorno. A versão automatizada escrita para o teste foi descartada.
-- **CE-13** — PDF que não chega a Downloads vira "Falha técnica" por tempo esgotado (`test_sem_a_certidao_termina_em_tempo_esgotado`). PDF de outro CNPJ ou outro documento é ignorado (`test_ignora_pdf_novo_que_nao_e_a_certidao_e_certidao_de_outro_cnpj`).
-- **CE-09** — Texto diferente do conhecido mantém "Obtida" com "Conferir no PDF" (`test_apenados_tcesp_com_texto_desconhecido_pede_conferencia`).
-
-## Outras mudanças
-- `navegador_servidor.obter_pelo_navegador`: o nome do portal agora vem com artigo ("da Receita Federal", "da Caixa", "do TCE-SP"), para a mensagem de erro sair correta.
+    Resposta inesperada vira "Falha técnica".
+  - **Leitura `leitura.ler_improbidade_cnj`:** "Nada consta" só na "Certidão Negativa" que diz "NÃO CONSTA"; nos demais casos, "Conferir no PDF". Mostra a data de emissão.
+  - **Item 7:** `leitura.ler_sancoes_tcu` passa a decidir só por TCU, CEIS e CNEP. O resultado do CNJ fica na mensagem, apontando para o item 10. Um cadastro desconhecido ou repetido continua levando a "Conferir no PDF".
+  - **Testes:**
+    - `tests/test_cnj.py` (7);
+    - `tests/test_leitura.py::test_improbidade_*` (3, um sobre o texto real) e `::test_sancoes_*` (ajustados);
+    - `tests/test_sequencia.py::test_improbidade_*` e `::test_sancoes_*`.
+- **RN-07 — CND federal de filial pela matriz.**
+  - **Mudança:**
+    - o item da CND tem `precisa=("matriz",)`;
+    - para filial, `Execucao` passa o CNPJ da matriz a `receita.obter_cnd`, mostra-o na instrução e explica o motivo;
+    - o PDF fica na pasta da filial;
+    - a tela de escolha da filial avisa isso;
+    - o CRF continua com o CNPJ da filial.
+  - **Testes:**
+    - `tests/test_sequencia.py::test_filial_pede_a_cnd_com_o_cnpj_da_matriz_e_explica_na_tela`;
+    - `::test_matriz_pede_a_cnd_com_o_proprio_cnpj_sem_aviso`;
+    - `tests/test_navegador_servidor.py::test_filial_copia_o_cnpj_da_matriz_e_guarda_o_pdf_na_pasta_da_filial`;
+    - `tests/test_app.py::test_filial_escolhida_passa_o_cnpj_da_matriz_para_a_sequencia`.
 
 ## Perguntas em aberto / pendências
-- O texto de uma certidão com impedimentos não foi visto em documento real. A leitura usa o modelo da página do portal ("CONSTA(M)") e, em qualquer caso diferente de "NÃO constam", mostra "Conferir no PDF".
-- A validade impressa é o próprio dia da consulta. A partir do dia seguinte, a tela mostra "Vencida", o que é fiel ao documento, mas pode estranhar o servidor.
+- Não foi vista uma certidão real do CNJ com condenações. O programa pede a certidão com registros e mostra "Conferir no PDF".
+- Uma certidão de falência de ente público fica "em processamento" no e-SAJ. O item fica corretamente em "Pedido feito: acompanhar", mas a mensagem do portal ("Certidão em processamento") ainda não aparece na tela.
