@@ -17,6 +17,7 @@
   .erro { color: #b00020; }
   .Obtida { color: #1b6e1b; font-weight: 600; }
   .pedido { color: #0b4f8a; font-weight: 600; }
+  .neutro { color: #555; }
   .alerta { color: #8a4b00; font-weight: 600; }
   .aviso { margin-top: 24px; padding: 10px 12px; background: #f3f3f3; border-left: 4px solid #777; font-size: 14px; }
   .nao-emitida { margin-top: 10px; }
@@ -156,7 +157,7 @@
       const l = linhas.get(item.chave);
       l.estado.textContent = item.estado;
       l.estado.className = {'Obtida': 'Obtida', 'Falha técnica': 'erro', 'Não emitida': 'alerta',
-                            'Pedido feito: acompanhar': 'pedido'}[item.estado] || '';
+                            'Pedido feito: acompanhar': 'pedido', 'Não se aplica': 'neutro'}[item.estado] || '';
       l.situacao.textContent = item.situacao || '';
       l.situacao.className = item.situacao === 'Conferir no PDF' ? 'alerta' : '';
       l.validade.textContent = item.validade ? item.validade + (item.vencida ? ' (Vencida)' : '') : '';
@@ -178,7 +179,7 @@
     identificar.disabled = sim;
     email.disabled = sim;
     for (const l of linhas.values()) l.repetir.disabled = sim;
-    for (const b of escolhas.querySelectorAll('button')) b.disabled = sim || b.dataset.bloqueado === 'sim';
+    for (const b of escolhas.querySelectorAll('button')) b.disabled = sim;
   }
 
   async function acompanhar() {
@@ -209,8 +210,6 @@
     const b = document.createElement('button');
     b.type = 'button';
     b.textContent = rotulo;
-    if (!emp.atendida) b.dataset.bloqueado = 'sim';
-    b.disabled = !emp.atendida;
     b.addEventListener('click', () => iniciar(emp.cnpj));
     escolhas.appendChild(b);
   }
@@ -229,17 +228,14 @@
 
     const avisos = [];
     if (e.matriz) {
-      if (e.atendida) botaoEscolha('Emitir certidões', e);
-      else avisos.push('Empresa com CNPJ de ' + e.uf + ': não atendida nesta versão, que cobre apenas CNPJ de SP.');
+      botaoEscolha('Emitir certidões', e);
     } else {
       avisos.push('Este CNPJ é de filial. Escolha qual CNPJ consultar.');
-      botaoEscolha('Consultar a filial ' + e.cnpj_formatado + (e.atendida ? '' : ' (fora de SP)'), e);
+      botaoEscolha('Consultar a filial ' + e.cnpj_formatado + ' (' + e.uf + ')', e);
       if (r.matriz) {
-        botaoEscolha('Consultar a matriz ' + r.matriz.cnpj_formatado + (r.matriz.atendida ? '' : ' (fora de SP)'), r.matriz);
-        if (!r.matriz.atendida) avisos.push('A matriz é de ' + r.matriz.uf + ': não atendida nesta versão.');
+        botaoEscolha('Consultar a matriz ' + r.matriz.cnpj_formatado + ' (' + r.matriz.uf + ')', r.matriz);
       }
       if (r.erro_matriz) avisos.push(r.erro_matriz);
-      if (!e.atendida) avisos.push('A filial é de ' + e.uf + ': não atendida nesta versão.');
     }
     avisoEmpresa.textContent = avisos.join(' ');
     avisoEmpresa.className = avisos.length ? 'alerta' : '';

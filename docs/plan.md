@@ -1,5 +1,5 @@
 # Plan: Obtenção assistida de certidões de fornecedores
-Spec: docs/spec.md, versão 1.9 | Gerado: 2026-11-06
+Spec: docs/spec.md, versão 1.10 | Gerado: 2026-11-06
 Progresso: 9/13 incrementos concluídos (3 adiados)
 
 ## Backlog
@@ -80,10 +80,10 @@ Entrega verificável: para empresa com sede em SJC, a CND municipal fica salva e
 Status: pendente
 Itens da spec: Definição de concluído
 Depende de: INC-12 (INC-09 e INC-13 adiados)
-Entrega verificável: um relatório mostra o resultado dos 10 CNPJs reais de SP, nos itens ativos da RN-01 (1, 2, 3, 5, 7 e 8), incluindo ao menos 1 filial, conferido com os PDFs.
+Entrega verificável: um relatório mostra o resultado de 10 CNPJs reais, nos itens ativos da RN-01 (1, 2, 3, 5, 7 e 8), incluindo ao menos 1 filial e 1 CNPJ de outra UF, conferido com os PDFs.
 
 ## Cobertura
-Cada REQ, RNF, RN e CE da spec aparece em exatamente um incremento: REQ-01 a REQ-18, RNF-01 a RNF-06, RN-01 a RN-09 e RN-11, e CE-01 a CE-15. A RN-10 registra os adiamentos e não tem incremento próprio.
+Cada REQ, RNF, RN e CE da spec aparece em exatamente um incremento: REQ-01 a REQ-18, RNF-01 a RNF-06, RN-01 a RN-09 e RN-11, e CE-01 a CE-15. A RN-10 registra os adiamentos e a RN-12, o mapeamento colaborativo; nenhuma das duas tem incremento próprio.
 
 O INC-02 antecipa o maior risco técnico (hCaptcha em navegador automatizado). Se a Receita ou a Caixa recusarem o navegador, o plano deve ser revisto antes de seguir.
 
@@ -102,4 +102,5 @@ O INC-02 antecipa o maior risco técnico (hCaptcha em navegador automatizado). S
 
   Novos incrementos: INC-11 (TCU), INC-12 (TCE-SP) e INC-13 (SJC, adiado). O INC-10 passa para depois deles.
 - **2026-11-12 — TCE-SP no navegador do servidor.** Reconhecimento só de leitura: o formulário "Gerar Certidão" abre direto pelo endereço; "Gerar" abre uma janela com o Turnstile, e "OK" gera a certidão na tela, com o link de PDF. Em duas tentativas assistidas no Chromium do Playwright, o Turnstile falhou com o erro 600010 (recusa de navegador automatizado). No navegador normal do servidor, o mesmo CNPJ gerou a certidão sem problema. Pela CE-15, o item 8 passou ao modo navegador do servidor (spec 1.9), sem tentar contornar. A certidão imprime "válido até" com a data da própria consulta, e o programa mostra essa data (RN-04).
+- **2026-11-12 — CNPJ de qualquer UF.** O projeto vai ser oferecido a outros municípios, e a regra "só CNPJ de SP" deixou de valer (spec 1.10). O REQ-04 do INC-05 foi revisto: o programa atende qualquer UF, e o item cujo portal só atende uma UF fica "Não se aplica" fora dela, sem abrir o portal. Hoje, só a falência pelo e-SAJ depende da UF; o TCE-SP vale para qualquer fornecedor, porque a consulta é exigida pelo órgão contratante de SP. As CNDs estaduais e municipais de outras UFs e municípios passam a vir do mapeamento colaborativo, pelas issues do repositório (RN-12).
 - **2026-11-12 — TCU sem navegador.** A página do TCU busca o resultado e o PDF numa API pública (`/api/rest/publico/certidoes/<CNPJ>`, com `Accept: application/pdf`). Pedir o PDF direto, sem Chromium, é mais simples e leve. Novo modo "consulta direta" na RN-09. No Windows da prefeitura, a consulta passa pelo proxy configurado no sistema, como a da BrasilAPI.

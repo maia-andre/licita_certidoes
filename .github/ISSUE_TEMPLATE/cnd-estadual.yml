@@ -1,0 +1,79 @@
+name: CND estadual do meu estado
+description: Informe como se emite a certidão de débitos estaduais (ICMS e dívida ativa) no portal de uma UF.
+title: "[CND estadual] <UF>"
+labels: ["cnd-estadual", "help wanted"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por ajudar a mapear as CNDs estaduais! Cada estado tem um portal próprio, e é isso que permite ao `licita_certidoes` abrir o portal certo a partir da UF do fornecedor.
+
+        Não é preciso emitir a certidão: basta abrir o portal e descrever o que aparece.
+  - type: input
+    id: uf
+    attributes:
+      label: UF
+      placeholder: "Ex.: MG"
+    validations:
+      required: true
+  - type: input
+    id: endereco
+    attributes:
+      label: Endereço do portal da CND
+      description: O link da página em que se pede a certidão, se possível o mais direto.
+      placeholder: "https://..."
+    validations:
+      required: true
+  - type: input
+    id: certidao
+    attributes:
+      label: Nome da certidão no portal
+      placeholder: "Ex.: Certidão de Débitos Tributários, Certidão Única, CND de ICMS..."
+  - type: dropdown
+    id: abrangencia
+    attributes:
+      label: Uma certidão só ou separadas?
+      description: Em alguns estados, os débitos na Fazenda e a dívida ativa (Procuradoria) saem em certidões diferentes.
+      options:
+        - Uma certidão cobre Fazenda e dívida ativa
+        - Certidões separadas (Fazenda e Procuradoria)
+        - Não sei
+    validations:
+      required: true
+  - type: dropdown
+    id: acesso
+    attributes:
+      label: O que o portal pede para emitir?
+      multiple: true
+      options:
+        - Só o CNPJ, sem captcha
+        - Captcha (imagem, reCAPTCHA, hCaptcha, Turnstile...)
+        - Login gov.br
+        - Login próprio do estado (senha do contribuinte)
+        - Inscrição estadual ou outro dado além do CNPJ
+        - Não sei
+    validations:
+      required: true
+  - type: dropdown
+    id: emissao
+    attributes:
+      label: Como a certidão sai?
+      options:
+        - Na hora, em PDF
+        - Por pedido, com prazo de análise
+        - Só presencialmente
+        - Não sei
+    validations:
+      required: true
+  - type: textarea
+    id: observacoes
+    attributes:
+      label: Observações
+      description: Horário de funcionamento, validade da certidão, mudanças recentes de legislação, mensagens do portal, prints de tela...
+  - type: checkboxes
+    id: cuidados
+    attributes:
+      label: Cuidados
+      options:
+        - label: Não incluí senhas, dados pessoais nem dados de empresas reais nesta issue ou nos prints.
+          required: true

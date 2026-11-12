@@ -12,7 +12,7 @@ from certidoes.cnpj import CnpjInvalido, cnpj_da_matriz, formatar, normalizar
 from certidoes.empresa import ErroIdentificacao
 from certidoes.portais.esaj import email_valido
 from certidoes.preferencias import Preferencias
-from certidoes.sequencia import ITENS, Execucao
+from certidoes.sequencia import ITENS, Execucao, aplica
 
 TELA = pathlib.Path(__file__).parent / "ui" / "index.html"
 
@@ -31,7 +31,6 @@ def _em_segundo_plano(funcao) -> None:
 
 AVISO_FILIAL = ("Você escolheu a filial. A certidão de falência deve seguir o distribuidor da sede "
                 "(art. 69, II, da Lei 14.133/2021).")
-NAO_ATENDIDA = "Empresa com CNPJ de {uf}: não atendida nesta versão, que cobre apenas CNPJ de SP. Nenhum portal foi aberto."
 EM_ANDAMENTO = "Já existe uma consulta em andamento."
 EMAIL_INVALIDO = ("Informe um e-mail válido para o pedido de falência no e-SAJ: o TJSP envia para ele as "
                   "instruções de emissão.")
@@ -78,24 +77,23 @@ class Api:
         return resposta
 
     def emitir(self, cnpj, email=None):
-        """Inicia a sequência para um CNPJ identificado e atendido (REQ-04). A tela acompanha por estado().
+        """Inicia a sequência para um CNPJ identificado (REQ-05). A tela acompanha por estado().
 
         O e-mail vai só para o pedido no e-SAJ (REQ-12) e fica salvo nas preferências deste computador.
+        Itens de portal de outra UF ficam "Não se aplica" (REQ-04).
         """
-        precisa_email = any("email" in item.precisa for item in self._itens)
         with self._trava:
             escolhida = self._opcoes.get(cnpj) if isinstance(cnpj, str) else None
             if escolhida is None:
                 return {"ok": False, "mensagem": "Identifique a empresa antes de emitir as certidões."}
-            if not escolhida.atendida:
-                return {"ok": False, "mensagem": NAO_ATENDIDA.format(uf=escolhida.uf)}
+            precisa_email = any("email" in item.precisa for item in self._itens if aplica(item, escolhida.uf))
             if self._rodando:
                 return {"ok": False, "mensagem": EM_ANDAMENTO}
             if precisa_email and not email_valido(email):
                 return {"ok": False, "mensagem": EMAIL_INVALIDO, "campo": "email"}
             dados = {"razao_social": escolhida.razao_social, "email": email.strip() if precisa_email else None}
             self._rodando = True
-            self._execucao = Execucao(self._itens, cnpj, dados=dados)
+            self._execucao = Execucao(self._itens, cnpj, dados=dados, uf=escolhida.uf)
             execucao = self._execucao
         if precisa_email:
             self._preferencias.salvar_email(dados["email"])

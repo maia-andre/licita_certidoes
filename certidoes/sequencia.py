@@ -19,6 +19,7 @@ NAO_EMITIDA = "Não emitida"
 PULADA = "Pulada"
 FALHA = "Falha técnica"
 PEDIDO_FEITO = "Pedido feito: acompanhar"
+NAO_SE_APLICA = "Não se aplica"  # portal de outra UF (REQ-04); nunca indica irregularidade
 REPETIVEIS = (FALHA, NAO_EMITIDA, PULADA)  # REQ-14
 
 # Modos de acesso (RN-09)
@@ -42,6 +43,13 @@ class Item:
     # Dados da consulta repassados a obter(), p. ex. ("razao_social", "email"). "avisar" é especial:
     # recebe avisar(mensagem), que atualiza a mensagem do item em andamento.
     precisa: tuple = ()
+    uf: str | None = None  # UF atendida pelo portal; None = qualquer UF (REQ-04)
+    fora_da_uf: str = ""  # mensagem de "Não se aplica"; aceita {uf}
+
+
+def aplica(item: Item, uf: str | None) -> bool:
+    """O item vale para o CNPJ da UF informada (REQ-04). Sem UF conhecida, vale."""
+    return item.uf is None or uf is None or uf.upper() == item.uf
 
 
 # Ordem da RN-01. Adiados (RN-10): Certidão Única estadual (item 4), eproc (item 6) e CND de SJC (item 9).
@@ -50,7 +58,9 @@ ITENS = (
     Item("crf", "CRF FGTS", "Caixa", caixa.obter_crf, caixa.INSTRUCAO, NAVEGADOR, leitura.ler_crf),
     Item("cndt", "CNDT", "TST", tst.obter_cndt, tst.INSTRUCAO, AUTOMATIZADO, leitura.ler_cndt),
     Item("falencia", "Falência, concordatas e recuperações", "e-SAJ/TJSP", esaj.obter_pedido_falencia,
-         esaj.INSTRUCAO, AUTOMATIZADO, leitura.ler_falencia, precisa=("razao_social", "email", "avisar")),
+         esaj.INSTRUCAO, AUTOMATIZADO, leitura.ler_falencia, precisa=("razao_social", "email", "avisar"), uf="SP",
+         fora_da_uf="CNPJ de {uf}: o e-SAJ do TJSP não emite esta certidão. Peça-a ao distribuidor do Tribunal de "
+                    "Justiça da sede (art. 69, II, da Lei 14.133/2021)."),
     Item("sancoes", "Sanções: TCU, CNJ, CEIS e CNEP", "TCU", tcu.obter_consulta, tcu.INSTRUCAO, DIRETO,
          leitura.ler_sancoes_tcu),
     Item("apenados", "Apenados do TCE-SP", "TCE-SP", tcesp.obter_certidao, tcesp.INSTRUCAO, NAVEGADOR,
@@ -84,8 +94,9 @@ def _mensagem_nao_emitida(texto: str) -> str:
 class Execucao:
     """Percorre os itens para um CNPJ. Uma falha em um item não interrompe os demais (CE-05)."""
 
-    def __init__(self, itens, cnpj, hoje=dt.date.today, dados=None):
+    def __init__(self, itens, cnpj, hoje=dt.date.today, dados=None, uf=None):
         self._itens = tuple(itens)
+        self._uf = uf  # UF do CNPJ escolhido (REQ-04)
         self._dados = dict(dados or {})  # razão social, e-mail etc.; só em memória
         self._por_chave = {item.chave: item for item in self._itens}
         self._cnpj = cnpj
@@ -93,6 +104,9 @@ class Execucao:
         self._trava = threading.Lock()
         self._sinais = {}
         self._estado = {item.chave: self._estado_inicial(item) for item in self._itens}
+        for item in self._itens:
+            if not aplica(item, uf):
+                self._estado[item.chave].update(estado=NAO_SE_APLICA, mensagem=item.fora_da_uf.format(uf=uf))
 
     @staticmethod
     def _estado_inicial(item):
@@ -106,7 +120,8 @@ class Execucao:
 
     def rodar(self):
         for item in self._itens:
-            self._rodar_item(item)
+            if aplica(item, self._uf):
+                self._rodar_item(item)
 
     def pode_repetir(self, chave):
         with self._trava:

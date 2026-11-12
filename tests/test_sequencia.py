@@ -514,3 +514,35 @@ def test_apenados_nada_consta_mostram_a_validade_impressa(tmp_path):
     estado = execucao.itens()[0]
     assert (estado["estado"], estado["situacao"], estado["validade"], estado["vencida"]) == (
         "Obtida", "Nada consta", "12/11/2026", True)
+
+
+def test_item_de_outra_uf_nao_se_aplica_e_nao_abre_o_portal():
+    chamadas = []
+
+    def obter(cnpj, ao_aguardar, **kw):
+        chamadas.append(cnpj)
+        return pathlib.Path("/tmp/sp.pdf")
+
+    so_sp = seq.Item("sp", "SP", "Portal SP", obter, "", uf="SP", fora_da_uf="CNPJ de {uf}: peça na sede.")
+    execucao = seq.Execucao([so_sp, item("b", obtem("/b.pdf"))], CNPJ, uf="RJ")
+    assert execucao.itens()[0]["estado"] == "Não se aplica"  # já na tela, antes de rodar
+    execucao.rodar()
+    estado = execucao.itens()[0]
+    assert (estado["estado"], estado["mensagem"]) == ("Não se aplica", "CNPJ de RJ: peça na sede.")
+    assert execucao.itens()[1]["estado"] == "Obtida"
+    assert chamadas == []
+    assert not execucao.pode_repetir("sp")
+
+
+def test_item_da_mesma_uf_ou_sem_uf_conhecida_e_consultado():
+    so_sp = seq.Item("sp", "SP", "Portal SP", obtem("/sp.pdf"), "", uf="SP")
+    for uf in ("SP", "sp", None):
+        execucao = seq.Execucao([so_sp], CNPJ, uf=uf)
+        execucao.rodar()
+        assert execucao.itens()[0]["estado"] == "Obtida"
+
+
+def test_so_a_falencia_depende_da_uf_e_aponta_o_tribunal_da_sede():
+    assert {i.chave: i.uf for i in seq.ITENS if i.uf} == {"falencia": "SP"}
+    falencia = {i.chave: i for i in seq.ITENS}["falencia"]
+    assert "art. 69, II" in falencia.fora_da_uf.format(uf="MG")

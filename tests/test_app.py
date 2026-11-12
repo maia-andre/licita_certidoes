@@ -234,7 +234,7 @@ def test_identificar_mostra_os_dados_da_matriz():
     r = api.identificar("11.222.333/0001-81")
     assert r["ok"] is True
     assert r["empresa"]["razao_social"] == "EMPRESA FICTICIA LTDA"
-    assert (r["empresa"]["matriz"], r["empresa"]["atendida"], r["matriz"], r["erro_matriz"]) == (True, True, None, None)
+    assert (r["empresa"]["matriz"], r["empresa"]["uf"], r["matriz"], r["erro_matriz"]) == (True, "SP", None, None)
 
 
 def test_cnpj_invalido_nao_consulta_a_brasilapi():
@@ -273,18 +273,23 @@ def test_emitir_sem_identificar_e_recusado():
     assert chamadas == []
 
 
-def test_empresa_fora_de_sp_nao_abre_nenhum_portal():
+def test_empresa_de_outra_uf_consulta_os_itens_de_qualquer_uf_e_nao_abre_o_portal_de_sp():
     chamadas = []
+
+    def obter(chave):
+        def funcao(cnpj, ao_aguardar, **kw):
+            chamadas.append(chave)
+            return pathlib.Path(f"/tmp/{chave}.pdf")
+        return funcao
+
     rj = Empresa(CNPJ, "EMPRESA RJ LTDA", "RJ", "ATIVA", True)
-    api = criar_api(itens=[item("a", lambda cnpj, ao_aguardar, **kw: chamadas.append(cnpj))],
-                    consultar=empresas(**{f"c{CNPJ}": rj}))
-    r = api.identificar(CNPJ)
-    assert r["empresa"]["atendida"] is False
-    resposta = api.emitir(CNPJ)
-    assert resposta["ok"] is False
-    assert "RJ" in resposta["mensagem"] and "não atendida" in resposta["mensagem"]
-    assert chamadas == []
-    assert api.estado() == {"rodando": False, "itens": []}
+    so_sp = Item("sp", "SP", "Portal SP", obter("sp"), "", precisa=("email",), uf="SP", fora_da_uf="CNPJ de {uf}: não.")
+    api = criar_api(itens=[item("federal", obter("federal")), so_sp], consultar=empresas(**{f"c{CNPJ}": rj}))
+    assert api.identificar(CNPJ)["empresa"]["uf"] == "RJ"
+    assert api.emitir(CNPJ)["ok"] is True  # sem e-mail: o único item que o pede não se aplica
+    assert chamadas == ["federal"]
+    estados = {i["chave"]: (i["estado"], i["mensagem"]) for i in api.estado()["itens"]}
+    assert estados["sp"] == ("Não se aplica", "CNPJ de RJ: não.")
 
 
 def test_situacao_cadastral_nao_ativa_aparece_e_permite_continuar():
@@ -339,8 +344,8 @@ def test_filial_em_sp_com_matriz_fora_de_sp():
     matriz_mg = Empresa(CNPJ, "EMPRESA FICTICIA LTDA", "MG", "ATIVA", True)
     api = criar_api(consultar=empresas(**{f"c{FILIAL}": filial, f"c{CNPJ}": matriz_mg}))
     r = api.identificar(FILIAL)
-    assert r["matriz"]["atendida"] is False
-    assert api.emitir(CNPJ)["ok"] is False  # matriz escolhida: REQ-04
+    assert r["matriz"]["uf"] == "MG"
+    assert api.emitir(CNPJ)["ok"] is True  # matriz escolhida: itens de SP ficam "Não se aplica" (REQ-04)
     resposta = api.emitir(FILIAL)  # filial escolhida: continua com o aviso da RN-07
     assert resposta["ok"] is True
     assert resposta["aviso"] == app.AVISO_FILIAL

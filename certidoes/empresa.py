@@ -8,7 +8,6 @@ from certidoes.cnpj import formatar
 
 URL = "https://brasilapi.com.br/api/cnpj/v1/{cnpj}"
 TEMPO_LIMITE_S = 20
-UF_ATENDIDA = "SP"
 # Identificação genérica, sem dados do usuário.
 CABECALHOS = {"User-Agent": "licita_certidoes", "Accept": "application/json"}
 
@@ -29,14 +28,10 @@ class Empresa:
     def ativa(self) -> bool:
         return self.situacao_cadastral.upper() == "ATIVA"
 
-    @property
-    def atendida(self) -> bool:
-        return self.uf.upper() == UF_ATENDIDA
-
     def para_tela(self) -> dict:
         return {"cnpj": self.cnpj, "cnpj_formatado": formatar(self.cnpj), "razao_social": self.razao_social,
                 "uf": self.uf, "situacao_cadastral": self.situacao_cadastral, "ativa": self.ativa,
-                "matriz": self.matriz, "atendida": self.atendida}
+                "matriz": self.matriz}
 
 
 def _buscar(url: str) -> dict:

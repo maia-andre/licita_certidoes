@@ -26,20 +26,20 @@ def test_consulta_a_brasilapi_e_le_os_dados_da_empresa():
     e = emp.consultar("11222333000181", buscar=buscar_fixo(RESPOSTA, urls))
     assert urls == ["https://brasilapi.com.br/api/cnpj/v1/11222333000181"]
     assert e == emp.Empresa("11222333000181", "EMPRESA FICTICIA LTDA", "SP", "ATIVA", True)
-    assert e.ativa and e.atendida
+    assert e.ativa
 
 
-def test_filial_fora_de_sp_e_inativa():
+def test_filial_de_outra_uf_e_inativa():
     dados = dict(RESPOSTA, uf="RJ", identificador_matriz_filial=2, descricao_situacao_cadastral="BAIXADA")
     e = emp.consultar("11222333000262", buscar=buscar_fixo(dados))
-    assert (e.matriz, e.atendida, e.ativa) == (False, False, False)
+    assert (e.matriz, e.uf, e.ativa) == (False, "RJ", False)
 
 
 def test_para_tela():
     e = emp.Empresa("11222333000181", "EMPRESA FICTICIA LTDA", "SP", "ATIVA", True)
     assert e.para_tela() == {"cnpj": "11222333000181", "cnpj_formatado": "11.222.333/0001-81",
                              "razao_social": "EMPRESA FICTICIA LTDA", "uf": "SP", "situacao_cadastral": "ATIVA",
-                             "ativa": True, "matriz": True, "atendida": True}
+                             "ativa": True, "matriz": True}
 
 
 def test_resposta_incompleta_gera_erro_claro():
