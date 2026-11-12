@@ -6,7 +6,7 @@
 
 Programa local e gratuito para pregoeiros, gestores e fiscais de contratos.
 
-![Versão](https://img.shields.io/badge/vers%C3%A3o-0.2.0-blue)
+[![Versão](https://img.shields.io/github/v/release/maia-andre/licita_certidoes?label=vers%C3%A3o&color=blue)](https://github.com/maia-andre/licita_certidoes/releases)
 ![Status](https://img.shields.io/badge/status-em%20constru%C3%A7%C3%A3o-orange)
 ![Certidões](https://img.shields.io/badge/certid%C3%B5es-6%20de%209-2EAD33)
 ![Testes](https://img.shields.io/badge/testes-246%20passando-brightgreen)
@@ -151,6 +151,8 @@ O que falta, o que impede e um caminho possível para cada exigência. Nenhum de
 
 ### Versões
 
+As notas de cada versão estão em [Releases](https://github.com/maia-andre/licita_certidoes/releases).
+
 | Versão | Data | Conteúdo |
 |---|---|---|
 | **v0.1.0** · Fluxo básico | 11/11/2026 | CND federal, CRF e CNDT em sequência; leitura de situação e validade; identificação pela BrasilAPI; pular e repetir |
@@ -158,6 +160,8 @@ O que falta, o que impede e um caminho possível para cada exigência. Nenhum de
 | **v1.0.0** · Validada *(planejada)* | — | Validação com 10 CNPJs reais de SP e tela revisada |
 
 ### Marcos
+
+O andamento de cada marco, com as issues pendentes, está em [Milestones](https://github.com/maia-andre/licita_certidoes/milestones).
 
 ```mermaid
 timeline
