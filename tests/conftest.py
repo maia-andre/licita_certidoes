@@ -144,6 +144,28 @@ no e-mail informado, ou anote o Número e a Data do seu Pedido, para posterior e
 </body></html>"""
 
 
+# Consulta Consolidada do TCU: texto essencial do PDF real de 12/11/2026, em ASCII, com os quatro cadastros "Nada Consta".
+TCU_CONSULTA = (
+    "Consulta Consolidada de Pessoa Juridica",
+    "12/11/2026 11:28:12Consulta realizada em:",
+    "Informacoes da Pessoa Juridica:", "Razao Social: EMPRESA FICTICIA LTDA", "CNPJ: 11.222.333/0001-81",
+    "Resultados da Consulta Eletronica:",
+    "Orgao Gestor: TCU", "Cadastro: Licitantes Inidoneos", "Resultado da consulta: Nada Consta",
+    "Para acessar a certidao original no portal do orgao gestor, clique .AQUI",
+    "Orgao Gestor: CNJ",
+    "Cadastro: CNIA - Cadastro Nacional de Condenacoes Civeis por Ato de Improbidade Administrativa",
+    "e Inelegibilidade", "Resultado da consulta: Nada Consta",
+    "Para acessar a certidao original no portal do orgao gestor, clique .AQUI",
+    "Orgao Gestor: Portal da Transparencia", "Cadastro: Cadastro Nacional de Empresas Inidoneas e Suspensas",
+    "Resultado da consulta: Nada Consta",
+    "Para acessar a certidao original no portal do orgao gestor, clique .AQUI",
+    "Orgao Gestor: Portal da Transparencia", "Cadastro: CNEP - Cadastro Nacional de Empresas Punidas",
+    "Resultado da consulta: Nada Consta",
+    "Para acessar a certidao original no portal do orgao gestor, clique .AQUI",
+    "Obs: A consulta consolidada de pessoa juridica visa atender aos principios de simplificacao.",
+)
+
+
 class _Handler(http.server.BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
@@ -185,6 +207,15 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             self._html(ESAJ_CONSULTA.format(acao="/esaj-baixar"))
         elif url.path == "/esaj-consulta-pendente":
             self._html(ESAJ_CONSULTA.format(acao="/esaj-pendente"))
+        elif url.path.startswith(("/tcu/", "/tcu-erro/", "/tcu-html/")):
+            self.server.tcu.append({"caminho": url.path, "accept": self.headers.get("Accept"),
+                                    "agente": self.headers.get("User-Agent")})
+            if url.path.startswith("/tcu-erro/"):
+                self.send_error(503)
+            elif url.path.startswith("/tcu-html/") or self.headers.get("Accept") != "application/pdf":
+                self._html("<html><body>Certidões APF</body></html>")
+            else:
+                self._anexo(pdf_com_texto(*TCU_CONSULTA))
         elif url.path == "/sem-formulario":
             self._html("<html><body>Portal em manutenção</body></html>")
         else:
@@ -219,6 +250,7 @@ def portal():
     servidor = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _Handler)
     servidor.registro = None
     servidor.consultas = []
+    servidor.tcu = []
     thread = threading.Thread(target=servidor.serve_forever, daemon=True)
     thread.start()
     servidor.url = f"http://127.0.0.1:{servidor.server_address[1]}"

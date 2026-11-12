@@ -8,7 +8,7 @@ from typing import Callable
 from certidoes import leitura
 from certidoes.cnpj import formatar
 from certidoes.pdf import texto_do_pdf
-from certidoes.portais import caixa, esaj, receita, tst
+from certidoes.portais import caixa, esaj, receita, tcu, tst
 from certidoes.portais.comum import NaoEmitida, Pedido, PortalErro, Pulada, SinalServidor
 
 AGUARDANDO = "Aguardando"
@@ -24,6 +24,7 @@ REPETIVEIS = (FALHA, NAO_EMITIDA, PULADA)  # REQ-14
 # Modos de acesso (RN-09)
 AUTOMATIZADO = "automatizado"
 NAVEGADOR = "navegador"
+DIRETO = "direto"  # consulta direta ao portal, sem navegador e sem captcha (TCU)
 
 LIMITE_MENSAGEM = 1000
 
@@ -43,13 +44,15 @@ class Item:
     precisa: tuple = ()
 
 
-# Ordem da RN-01. A Certidão Única estadual (item 4) está adiada (RN-10); o eproc (item 6) entra no INC-09.
+# Ordem da RN-01. Adiados (RN-10): Certidão Única estadual (item 4), eproc (item 6) e CND de SJC (item 9).
 ITENS = (
     Item("cnd", "CND federal", "Receita Federal", receita.obter_cnd, receita.INSTRUCAO, NAVEGADOR, leitura.ler_cnd),
     Item("crf", "CRF FGTS", "Caixa", caixa.obter_crf, caixa.INSTRUCAO, NAVEGADOR, leitura.ler_crf),
     Item("cndt", "CNDT", "TST", tst.obter_cndt, tst.INSTRUCAO, AUTOMATIZADO, leitura.ler_cndt),
     Item("falencia", "Falência, concordatas e recuperações", "e-SAJ/TJSP", esaj.obter_pedido_falencia,
          esaj.INSTRUCAO, AUTOMATIZADO, leitura.ler_falencia, precisa=("razao_social", "email", "avisar")),
+    Item("sancoes", "Sanções: TCU, CNJ, CEIS e CNEP", "TCU", tcu.obter_consulta, tcu.INSTRUCAO, DIRETO,
+         leitura.ler_sancoes_tcu),
 )
 
 
@@ -168,6 +171,8 @@ class Execucao:
         vencida = lido.validade is not None and lido.validade < self._hoje()
         with self._trava:
             self._estado[item.chave].update(situacao=lido.situacao, validade=validade, vencida=vencida)
+            if lido.detalhe:  # resultado por cadastro (CE-14)
+                self._estado[item.chave]["mensagem"] = lido.detalhe[:LIMITE_MENSAGEM]
 
     def pular(self, chave):
         """O servidor pula o item em andamento (REQ-07)."""

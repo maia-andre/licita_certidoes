@@ -1,6 +1,6 @@
 # Plan: Obtenção assistida de certidões de fornecedores
-Spec: docs/spec.md, versão 1.7 | Gerado: 2026-11-06
-Progresso: 7/10 incrementos concluídos (2 adiados)
+Spec: docs/spec.md, versão 1.8 | Gerado: 2026-11-06
+Progresso: 8/13 incrementos concluídos (3 adiados)
 
 ## Backlog
 
@@ -58,14 +58,32 @@ Itens da spec: REQ-13 | RNF-03 | RN-01
 Depende de: INC-08
 Entrega verificável: o eproc abre para o servidor entrar com o gov.br, o item fica em "Pedido feito: acompanhar" após a confirmação e os seis itens aparecem na tela, sem credenciais guardadas ao reiniciar o programa.
 
+### INC-11 — Sanções federais pela Consulta Consolidada do TCU
+Status: concluído (2026-11-12)
+Itens da spec: REQ-16 | RN-11 | CE-14
+Depende de: INC-08
+Entrega verificável: um CNPJ real tem o PDF da Consulta Consolidada salvo, com o resultado de TCU, CNJ, CEIS e CNEP na tela, e um cadastro indisponível aparece como "Conferir no PDF" com o nome do cadastro e o link de consulta manual.
+
+### INC-12 — Apenados do TCE-SP
+Status: pendente
+Itens da spec: REQ-17 | CE-15
+Depende de: INC-11
+Entrega verificável: em teste assistido, um CNPJ real tem a certidão de apenados do TCE-SP salva depois que o servidor resolve o captcha, com a situação lida na tela; se o Turnstile recusar o Chromium automatizado, o item passa ao modo navegador do servidor.
+
+### INC-13 — CND municipal de São José dos Campos
+Status: adiado (2026-11-12) — o novo sistema tributário (iiTributário) exige login por CPF e ainda não oferece a CND mobiliária (spec 1.8, RN-10)
+Itens da spec: REQ-18
+Depende de: INC-12
+Entrega verificável: para empresa com sede em SJC, a CND municipal fica salva e lida na tela; para outro município, o item informa que a certidão vem da prefeitura da sede, sem abrir portal.
+
 ### INC-10 — Validação com 10 CNPJs reais
 Status: pendente
 Itens da spec: Definição de concluído
-Depende de: INC-08 (INC-09 adiado)
-Entrega verificável: um relatório mostra o resultado dos 10 CNPJs reais de SP, nos quatro itens ativos da RN-01,, incluindo ao menos 1 filial, conferido com os PDFs.
+Depende de: INC-12 (INC-09 e INC-13 adiados)
+Entrega verificável: um relatório mostra o resultado dos 10 CNPJs reais de SP, nos itens ativos da RN-01 (1, 2, 3, 5, 7 e 8), incluindo ao menos 1 filial, conferido com os PDFs.
 
 ## Cobertura
-Cada REQ, RNF, RN e CE da spec aparece em exatamente um incremento: REQ-01 a REQ-15, RNF-01 a RNF-06, RN-01 a RN-09 e CE-01 a CE-13.
+Cada REQ, RNF, RN e CE da spec aparece em exatamente um incremento: REQ-01 a REQ-18, RNF-01 a RNF-06, RN-01 a RN-09 e RN-11, e CE-01 a CE-15. A RN-10 registra os adiamentos e não tem incremento próprio.
 
 O INC-02 antecipa o maior risco técnico (hCaptcha em navegador automatizado). Se a Receita ou a Caixa recusarem o navegador, o plano deve ser revisto antes de seguir.
 
@@ -76,3 +94,11 @@ O INC-02 antecipa o maior risco técnico (hCaptcha em navegador automatizado). S
 - **2026-11-12 — e-SAJ aceita navegador automatizado.** Sem login e sem bloqueio de robôs. Em teste assistido, o programa preencheu o pedido (modelo de falências, pessoa jurídica, razão social, CNPJ e e-mail) e o servidor marcou a confirmação e enviou; o reCAPTCHA aceitou o Chromium do Playwright e o TJSP registrou o pedido. A falência segue no modo automatizado, como o TST (spec 1.5).
 - **2026-11-12 — Certidão de falência baixada na hora.** A tela "Visualizar Certidão" do e-SAJ (número, data e CNPJ do pedido) não tem captcha. O pedido de teste já estava liberado, com "NADA CONSTAR". A pedido do servidor, o INC-08 passou a consultar logo após o pedido e a baixar o PDF quando liberado, e o e-mail passou a ficar salvo no computador (spec 1.6).
 - **2026-11-12 — Complemento do eproc adiado.** `https://certidoes.tjsp.jus.br/` exige gov.br nível ouro ou prata para registrar o pedido; só a página de download (número do pedido e CPF/CNPJ) é aberta. Decisão do servidor: não mexer com gov.br agora (spec 1.7, RN-10). O INC-10 passa a depender do INC-08 e valida os quatro itens ativos. RN-01 e RNF-03 continuam valendo: a lista da tela segue a RN-01 sem os itens adiados, e o programa não guarda nada do gov.br.
+- **2026-11-12 — Novas certidões a partir das minutas de edital.** Nas 10 minutas padrão lidas (`LICITACOES\Editais - 2026`), todas exigem CEIS, CNEP e Relação de Apenados do TCE-SP (consulta do pregoeiro) e quase todas exigem CND municipal (ISS) da sede. Decisão do servidor: incluir CEIS, CNEP, TCE-SP e CND de SJC (spec 1.8). Reconhecimento só de leitura:
+  - o Portal da Transparência pede captcha (AWS WAF);
+  - a Consulta Consolidada do TCU respondeu sem captcha e gerou o PDF, com CEIS, CNEP, inidôneos do TCU e CNIA do CNJ (o CNJ estava indisponível no teste);
+  - o TCE-SP gera a certidão de apenados com Cloudflare Turnstile;
+  - o sistema tributário de SJC migrou em 03/11/2026 para o iiTributário, com login por CPF, e a CND mobiliária ainda não foi liberada.
+
+  Novos incrementos: INC-11 (TCU), INC-12 (TCE-SP) e INC-13 (SJC, adiado). O INC-10 passa para depois deles.
+- **2026-11-12 — TCU sem navegador.** A página do TCU busca o resultado e o PDF numa API pública (`/api/rest/publico/certidoes/<CNPJ>`, com `Accept: application/pdf`). Pedir o PDF direto, sem Chromium, é mais simples e leve. Novo modo "consulta direta" na RN-09. No Windows da prefeitura, a consulta passa pelo proxy configurado no sistema, como a da BrasilAPI.

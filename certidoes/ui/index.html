@@ -161,7 +161,8 @@
       l.situacao.className = item.situacao === 'Conferir no PDF' ? 'alerta' : '';
       l.validade.textContent = item.validade ? item.validade + (item.vencida ? ' (Vencida)' : '') : '';
       l.validade.className = item.vencida ? 'erro' : (item.validade === 'Conferir no PDF' ? 'alerta' : '');
-      l.mensagem.textContent = item.arquivo ? 'Salva em: ' + item.arquivo : item.mensagem;
+      l.mensagem.textContent = [item.mensagem, item.arquivo ? 'Salva em: ' + item.arquivo : '']
+        .filter(Boolean).join(' ');
       l.abrir.hidden = !item.arquivo;
       l.naoEmitida.hidden = !(item.modo === 'navegador' && item.estado === 'Aguardando servidor');
       const emCurso = rodando && EM_CURSO.includes(item.estado);

@@ -3,7 +3,7 @@ import pathlib
 
 from certidoes import leitura
 from certidoes import sequencia as seq
-from certidoes.portais import esaj
+from certidoes.portais import esaj, tcu
 from certidoes.portais.comum import NaoEmitida, Pedido, PortalErro
 from tests.conftest import pdf_com_texto
 
@@ -23,11 +23,17 @@ def obtem(caminho):
 
 def test_itens_seguem_a_ordem_da_rn01_com_o_modo_de_cada_portal():
     assert [(i.chave, i.modo) for i in seq.ITENS] == [
-        ("cnd", seq.NAVEGADOR), ("crf", seq.NAVEGADOR), ("cndt", seq.AUTOMATIZADO), ("falencia", seq.AUTOMATIZADO)]
+        ("cnd", seq.NAVEGADOR), ("crf", seq.NAVEGADOR), ("cndt", seq.AUTOMATIZADO), ("falencia", seq.AUTOMATIZADO),
+        ("sancoes", seq.DIRETO)]
+
+
+def test_sancoes_vem_do_tcu_sem_dados_extras():
+    sancoes = {i.chave: i for i in seq.ITENS}["sancoes"]
+    assert (sancoes.obter, sancoes.precisa) == (tcu.obter_consulta, ())
 
 
 def test_falencia_pede_razao_social_e_email_ao_esaj():
-    falencia = seq.ITENS[-1]
+    falencia = {i.chave: i for i in seq.ITENS}["falencia"]
     assert falencia.obter is esaj.obter_pedido_falencia
     assert falencia.precisa == ("razao_social", "email", "avisar")
 
@@ -241,7 +247,8 @@ def test_item_nao_obtido_fica_sem_situacao_e_validade():
 
 
 def test_itens_reais_tem_leitor():
-    assert [i.ler for i in seq.ITENS] == [leitura.ler_cnd, leitura.ler_crf, leitura.ler_cndt, leitura.ler_falencia]
+    assert [i.ler for i in seq.ITENS] == [leitura.ler_cnd, leitura.ler_crf, leitura.ler_cndt, leitura.ler_falencia,
+                                          leitura.ler_sancoes_tcu]
 
 
 def espera_ate_pular(execucao_ref, chave):
@@ -456,3 +463,34 @@ def test_falencia_baixada_mostra_nada_consta_e_a_emissao_no_lugar_da_validade(tm
     estado = execucao.itens()[0]
     assert (estado["estado"], estado["situacao"], estado["validade"], estado["vencida"]) == (
         "Obtida", "Nada consta", "Não impressa (emitida em 12/11/2026)", False)
+
+
+def _sancoes(tmp_path, linhas):
+    arquivo = tmp_path / "sancoes.pdf"
+    arquivo.write_bytes(pdf_com_texto(*linhas))
+    obter = lambda cnpj, ao_aguardar, sinal, **dados: arquivo  # noqa: E731
+    execucao = seq.Execucao([seq.Item("s", "S", "TCU", obter, "", seq.DIRETO, leitura.ler_sancoes_tcu)], CNPJ)
+    execucao.rodar()
+    return execucao.itens()[0]
+
+
+def test_sancoes_nada_consta_mostram_cada_cadastro_e_a_data_da_consulta(tmp_path):
+    from tests.conftest import TCU_CONSULTA
+
+    estado = _sancoes(tmp_path, TCU_CONSULTA)
+    assert (estado["estado"], estado["situacao"], estado["validade"]) == (
+        "Obtida", "Nada consta", "Não impressa (emitida em 12/11/2026)")
+    assert estado["mensagem"] == ("TCU (Licitantes Inidôneos): Nada consta. CNJ (CNIA, improbidade): Nada consta. "
+                                  "CEIS: Nada consta. CNEP: Nada consta.")
+    assert estado["arquivo"] == tmp_path / "sancoes.pdf"
+
+
+def test_sancoes_com_cadastro_indisponivel_ficam_obtidas_para_conferir(tmp_path):
+    from tests.conftest import TCU_CONSULTA
+
+    linhas = tuple("Resultado da consulta: Sistema do CNJ esta indisponivel" if i == 13 else linha
+                   for i, linha in enumerate(TCU_CONSULTA))
+    estado = _sancoes(tmp_path, linhas)
+    assert (estado["estado"], estado["situacao"]) == ("Obtida", "Conferir no PDF")
+    assert "CNJ (CNIA, improbidade): Sistema do CNJ esta indisponivel (consulta manual: https://www.cnj.jus.br/" \
+           in estado["mensagem"]

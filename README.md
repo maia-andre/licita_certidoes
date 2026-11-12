@@ -10,7 +10,7 @@ Programa local e gratuito para pregoeiros, gestores e fiscais de contratos.
 ![Python](https://img.shields.io/badge/Python-3-3776AB?logo=python&logoColor=white)
 ![Playwright](https://img.shields.io/badge/Playwright-Chromium-2EAD33?logo=playwright&logoColor=white)
 ![Plataforma](https://img.shields.io/badge/plataforma-Windows%20%7C%20Linux-555)
-![Testes](https://img.shields.io/badge/testes-218%20passando-brightgreen)
+![Testes](https://img.shields.io/badge/testes-233%20passando-brightgreen)
 
 </div>
 
@@ -49,7 +49,7 @@ O programa abre cada portal de um de dois jeitos:
 
 ## O que já funciona
 
-Hoje o programa emite **quatro** certidões em sequência: a CND federal, o CRF do FGTS, a CNDT e a certidão de falência do e-SAJ. A primeira sequência real foi feita no Windows em 11/11/2026.
+Hoje o programa emite **cinco** itens em sequência: a CND federal, o CRF do FGTS, a CNDT, a certidão de falência do e-SAJ e a consulta de sanções do TCU (CEIS, CNEP, inidôneos do TCU e improbidade no CNJ). A primeira sequência real foi feita no Windows em 11/11/2026.
 
 - Valida o CNPJ, numérico ou alfanumérico, antes de qualquer consulta externa.
 - Identifica a empresa na BrasilAPI (razão social, UF, situação cadastral, matriz ou filial). Se for filial, mostra a matriz e pede a escolha; se o CNPJ escolhido não for de SP, não abre nenhum portal.
@@ -59,6 +59,7 @@ Hoje o programa emite **quatro** certidões em sequência: a CND federal, o CRF 
 - Permite pular a certidão em andamento e repetir só a que falhou, não foi emitida ou foi pulada.
 - Preenche o pedido da certidão de falência no e-SAJ com a razão social, o CNPJ e o e-mail do servidor, que confere, resolve o reCAPTCHA e envia. Em seguida, consulta o pedido e baixa a certidão, que costuma sair na hora quando nada consta. Se ainda não estiver liberada, o item fica em "Pedido feito: acompanhar", com o número do pedido (prazo do TJSP: até 5 dias).
 - Guarda o e-mail do servidor no computador, para as próximas consultas.
+- Baixa, sem captcha e sem abrir navegador, a Consulta Consolidada de Pessoa Jurídica do TCU e mostra o resultado de cada cadastro (TCU, CNJ, CEIS e CNEP). Se um deles estiver indisponível ou tiver registro, mostra "Conferir no PDF" e o link de consulta manual.
 - Guarda os PDFs na pasta `Certidoes\<CNPJ>\` do usuário (no Windows, `C:\Users\<usuário>\Certidoes\`).
 - Abre cada PDF pela própria tela.
 
@@ -74,6 +75,9 @@ A primeira versão atende empresas com CNPJ de SP.
 | Certidão Única estadual | SIDEB (Sefaz-SP/PGE-SP) | ⏸️ Adiada (o SIDEB exige login gov.br) |
 | Falência, concordatas e recuperações | e-SAJ/TJSP | ✅ Funcionando (baixada na hora, se já liberada) |
 | Complemento cível de primeiro grau | eproc/TJSP | ⏸️ Adiada (o pedido exige login gov.br) |
+| Sanções: CEIS, CNEP, inidôneos do TCU e CNJ | Consulta Consolidada (TCU) | ✅ Funcionando (sem navegador) |
+| Apenados do TCE-SP | Sistema de Apenados (TCE-SP) | ⏭️ Próxima |
+| CND municipal (ISS) de São José dos Campos | iiTributário (PMSJC) | ⏸️ Adiada (sistema em implantação) |
 
 ## Princípios
 
@@ -136,7 +140,10 @@ sudo apt install python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1
 | 07 | Pular e repetir itens | Refazer só o item que falhou | ✅ Concluído |
 | 08 | Falência no e-SAJ | Pedido enviado e item em "Pedido feito: acompanhar" | ✅ Concluído |
 | 09 | Complemento no eproc | Pedido com gov.br e os seis itens na tela | ⏸️ Adiado: exige login gov.br |
-| 10 | Validação com CNPJs reais | Resultado de 10 CNPJs de SP conferido com os PDFs | ⏭️ Próximo |
+| 11 | Sanções no TCU | CEIS, CNEP, TCU e CNJ em um PDF, com o resultado de cada cadastro | ✅ Concluído |
+| 12 | Apenados do TCE-SP | Certidão de apenados, com o captcha resolvido pelo servidor | ⏭️ Próximo |
+| 13 | CND municipal de SJC | CND mobiliária para empresas com sede em SJC | ⏸️ Adiado: sistema tributário em implantação |
+| 10 | Validação com CNPJs reais | Resultado de 10 CNPJs de SP conferido com os PDFs | Depois do 12 |
 
 Receita e Caixa recusam navegador automatizado (a Caixa bloqueia já no primeiro acesso). Por isso, a CND federal e o CRF são emitidos no navegador normal do servidor, sem contornar a recusa. Quando o portal não emite, o servidor informa pela tela, com o botão "O portal não emitiu".
 

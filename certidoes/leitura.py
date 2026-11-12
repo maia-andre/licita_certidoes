@@ -22,7 +22,8 @@ _CNPJ_NO_TEXTO = re.compile(r"([0-9A-Z]{2})\.?([0-9A-Z]{3})\.?([0-9A-Z]{3})/[0-9
 class Leitura:
     situacao: str = CONFERIR
     validade: dt.date | None = None  # None = "Conferir no PDF"
-    emissao: dt.date | None = None  # só em certidão que não imprime validade (falência no e-SAJ)
+    emissao: dt.date | None = None  # só em certidão que não imprime validade (falência, sanções)
+    detalhe: str | None = None  # resultado por cadastro, quando o documento reúne vários (sanções no TCU)
 
 
 def normalizar(texto: str) -> str:
@@ -114,6 +115,50 @@ def ler_falencia(texto: str) -> Leitura:
         return Leitura()
     situacao = NADA_CONSTA if "VERIFICOU NADA CONSTAR" in t else CONFERIR
     return Leitura(situacao, None, _data_extenso_unica(t))
+
+
+# Consulta Consolidada do TCU: cada cadastro vem como "Órgão Gestor: … Cadastro: … Resultado da consulta: …".
+_BLOCO_TCU = re.compile(
+    r"[ÓO]rg[ãa]o Gestor:\s*(?P<orgao>.+?)\s*Cadastro:\s*(?P<cadastro>.+?)\s*Resultado da consulta:\s*(?P<resultado>.+?)"
+    r"(?=\s*Para acessar|\s*[ÓO]rg[ãa]o Gestor:|\s*Obs:|$)",
+    re.IGNORECASE,
+)
+# Nome curto e link de consulta manual de cada cadastro (CE-14), na ordem do documento.
+_CADASTROS_TCU = (
+    (("LICITANTES INIDONEOS",), "TCU (Licitantes Inidôneos)", "https://certidoes.apps.tcu.gov.br/lista-inidoneos"),
+    (("CNIA", "IMPROBIDADE"), "CNJ (CNIA, improbidade)", "https://www.cnj.jus.br/improbidade_adm/consultar_requerido.php"),
+    (("CEIS", "INIDONEAS E SUSPENSAS"), "CEIS", "https://portaldatransparencia.gov.br/sancoes/ceis"),
+    (("CNEP", "EMPRESAS PUNIDAS"), "CNEP", "https://portaldatransparencia.gov.br/sancoes/cnep"),
+)
+
+
+def _cadastro_tcu(orgao: str, cadastro: str) -> tuple[str, str | None]:
+    chave = normalizar(cadastro)
+    for marcas, nome, link in _CADASTROS_TCU:
+        if any(marca in chave for marca in marcas):
+            return nome, link
+    return f"{orgao} ({cadastro})", None
+
+
+def ler_sancoes_tcu(texto: str) -> Leitura:
+    """Consulta Consolidada de Pessoa Jurídica: "Nada consta" só se os quatro cadastros disserem "Nada Consta"."""
+    t = normalizar(texto)
+    if "CONSULTA CONSOLIDADA DE PESSOA JURIDICA" not in t:
+        return Leitura()
+    partes, nomes, todos_nada_consta = [], set(), True
+    for bloco in _BLOCO_TCU.finditer(" ".join(texto.split())):
+        nome, link = _cadastro_tcu(bloco["orgao"], bloco["cadastro"])
+        resultado = bloco["resultado"].strip().rstrip(".")
+        nomes.add(nome)
+        if normalizar(resultado) == "NADA CONSTA":
+            partes.append(f"{nome}: Nada consta.")
+        else:
+            todos_nada_consta = False
+            partes.append(f"{nome}: {resultado}" + (f" (consulta manual: {link})." if link else "."))
+    esperados = {nome for _, nome, _ in _CADASTROS_TCU}
+    situacao = NADA_CONSTA if todos_nada_consta and nomes == esperados and len(partes) == 4 else CONFERIR
+    emissao = _data_unica(t, _DATA + r" \d{2}:\d{2}:\d{2}")
+    return Leitura(situacao, None, emissao, " ".join(partes) or None)
 
 
 def ler(leitor, texto: str, cnpj: str) -> Leitura:

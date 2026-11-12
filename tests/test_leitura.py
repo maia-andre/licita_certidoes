@@ -177,3 +177,75 @@ def test_outro_modelo_do_esaj_nao_e_lido_como_falencia():
 def test_falencia_com_duas_datas_por_extenso_fica_sem_emissao():
     texto = FALENCIA_REAL + " Brasília, 13 de novembro de 2026."
     assert lt.ler_falencia(texto).emissao is None
+
+
+# Texto da Consulta Consolidada real de 12/11/2026, como a pypdf o extrai, com empresa e CNPJ fictícios.
+TCU_REAL = """Consulta Consolidada de Pessoa Jurídica
+Este relatório tem por objetivo apresentar os resultados consolidados de consultas eletrônicas realizadas
+diretamente nos bancos de dados dos respectivos cadastros. A responsabilidade pela veracidade do resultado
+da consulta é do Órgão gestor de cada cadastro consultado. A informação relativa à razão social da Pessoa
+Jurídica é extraída do Cadastro Nacional da Pessoa Jurídica, mantido pela Receita Federal do Brasil.
+12/11/2026 11:28:12Consulta realizada em:
+Informações da Pessoa Jurídica:
+Razão Social: EMPRESA FICTICIA LTDA
+CNPJ: 11.222.333/0001-81
+Resultados da Consulta Eletrônica:
+Órgão Gestor: TCU
+Cadastro: Licitantes Inidôneos
+Resultado da consulta: Nada Consta
+Para acessar a certidão original no portal do órgão gestor, clique .AQUI
+Órgão Gestor: CNJ
+Cadastro: CNIA - Cadastro Nacional de Condenações Cíveis por Ato de Improbidade Administrativa
+e Inelegibilidade
+Resultado da consulta: Sistema do CNJ está indisponível
+Para acessar a certidão original no portal do órgão gestor, clique .AQUI
+Órgão Gestor: Portal da Transparência
+Cadastro: Cadastro Nacional de Empresas Inidôneas e Suspensas
+Resultado da consulta: Nada Consta
+Para acessar a certidão original no portal do órgão gestor, clique .AQUI
+Órgão Gestor: Portal da Transparência
+Cadastro: CNEP - Cadastro Nacional de Empresas Punidas
+Resultado da consulta: Nada Consta
+Para acessar a certidão original no portal do órgão gestor, clique .AQUI
+Obs: A consulta consolidada de pessoa jurídica visa atender aos princípios de simplificação e racionalização
+de serviços públicos digitais. Fundamento legal: Lei nº 12.965, de 23 de abril de 2014, Lei nº 13.460, de 26
+de junho de 2017, Lei nº 13.726, de 8 de outubro de 2018, Decreto nº 8.638 de 15, de janeiro de 2016.
+"""
+TCU_NADA_CONSTA = TCU_REAL.replace("Sistema do CNJ está indisponível", "Nada Consta")
+
+
+def test_sancoes_real_com_cnj_indisponivel_pede_conferencia_e_aponta_o_cadastro():
+    lido = lt.ler(lt.ler_sancoes_tcu, TCU_REAL, CNPJ)
+    assert (lido.situacao, lido.validade, lido.emissao) == (lt.CONFERIR, None, dt.date(2026, 11, 12))
+    assert lido.detalhe == (
+        "TCU (Licitantes Inidôneos): Nada consta. "
+        "CNJ (CNIA, improbidade): Sistema do CNJ está indisponível "
+        "(consulta manual: https://www.cnj.jus.br/improbidade_adm/consultar_requerido.php). "
+        "CEIS: Nada consta. CNEP: Nada consta.")
+
+
+def test_sancoes_nada_consta_nos_quatro_cadastros():
+    lido = lt.ler(lt.ler_sancoes_tcu, TCU_NADA_CONSTA, CNPJ)
+    assert (lido.situacao, lido.emissao) == (lt.NADA_CONSTA, dt.date(2026, 11, 12))
+    assert lido.detalhe == ("TCU (Licitantes Inidôneos): Nada consta. CNJ (CNIA, improbidade): Nada consta. "
+                            "CEIS: Nada consta. CNEP: Nada consta.")
+
+
+def test_sancoes_com_registro_pede_conferencia_com_o_link_do_cadastro():
+    texto = TCU_NADA_CONSTA.replace(
+        "Empresas Punidas\nResultado da consulta: Nada Consta", "Empresas Punidas\nResultado da consulta: Consta")
+    lido = lt.ler_sancoes_tcu(texto)
+    assert lido.situacao == lt.CONFERIR
+    assert "CNEP: Consta (consulta manual: https://portaldatransparencia.gov.br/sancoes/cnep)." in lido.detalhe
+
+
+def test_sancoes_sem_um_dos_cadastros_pede_conferencia():
+    sem_cnep = TCU_NADA_CONSTA.split("Órgão Gestor: Portal da Transparência\nCadastro: CNEP")[0]
+    lido = lt.ler_sancoes_tcu(sem_cnep)
+    assert lido.situacao == lt.CONFERIR
+    assert "CNEP" not in lido.detalhe
+
+
+def test_sancoes_de_outro_cnpj_ou_outro_documento_nao_sao_lidas():
+    assert lt.ler(lt.ler_sancoes_tcu, TCU_NADA_CONSTA, "99888777000166") == lt.Leitura()
+    assert lt.ler_sancoes_tcu(CNDT_NEGATIVA) == lt.Leitura()
