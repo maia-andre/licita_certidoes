@@ -165,6 +165,21 @@ TCU_CONSULTA = (
     "Obs: A consulta consolidada de pessoa juridica visa atender aos principios de simplificacao.",
 )
 
+# Certidão de Apenados do TCE-SP: texto do PDF real de 12/11/2026, em ASCII, com CNPJ fictício.
+TCESP_CERTIDAO = (
+    "CERTIDAO DE APENADOS",
+    "O Tribunal de Contas do Estado de Sao Paulo CERTIFICA que, de acordo com seus assentamentos, "
+    "ressalvando-se os atos que sobrevenham a",
+    "esta  pesquisa,  NAO  constam,  ate  a  presente  data,  12/11/2026,  as  13h58,  IMPEDIMENTOS  DE  "
+    "LICITACAO/CONTRATO/CHAMAMENTO",
+    "PUBLICO/CELEBRACAO DE PARCERIA relacionados ao CNPJ 11.222.333/0001-81  informado.",
+    "Este documento foi certificado digitalmente e e valido ate 12/11/2026, as 13h58.",
+    "Para conferencia:", "acesse o site https://www4.tce.sp.gov.br/apenados/publico",
+    "e informe o codigo: 9b41dab9-bf90-4ff6-9738-24b5dc2a863c", "ou acesse utilizando o QR Code",
+    "Av. Rangel Pestana, 315 - Centro - SP - CEP 01017-906",
+    " Telefone: (11) 3292-3266             www.tce.sp.gov.br", "Pagina: 1 de 1",
+)
+
 
 class _Handler(http.server.BaseHTTPRequestHandler):
     def log_message(self, *args):

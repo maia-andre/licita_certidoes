@@ -3,7 +3,7 @@ import pathlib
 
 from certidoes import leitura
 from certidoes import sequencia as seq
-from certidoes.portais import esaj, tcu
+from certidoes.portais import esaj, tcesp, tcu
 from certidoes.portais.comum import NaoEmitida, Pedido, PortalErro
 from tests.conftest import pdf_com_texto
 
@@ -24,12 +24,18 @@ def obtem(caminho):
 def test_itens_seguem_a_ordem_da_rn01_com_o_modo_de_cada_portal():
     assert [(i.chave, i.modo) for i in seq.ITENS] == [
         ("cnd", seq.NAVEGADOR), ("crf", seq.NAVEGADOR), ("cndt", seq.AUTOMATIZADO), ("falencia", seq.AUTOMATIZADO),
-        ("sancoes", seq.DIRETO)]
+        ("sancoes", seq.DIRETO), ("apenados", seq.NAVEGADOR)]
 
 
 def test_sancoes_vem_do_tcu_sem_dados_extras():
     sancoes = {i.chave: i for i in seq.ITENS}["sancoes"]
     assert (sancoes.obter, sancoes.precisa) == (tcu.obter_consulta, ())
+
+
+def test_apenados_vem_do_tcesp_no_navegador_do_servidor():
+    apenados = {i.chave: i for i in seq.ITENS}["apenados"]
+    assert (apenados.obter, apenados.precisa) == (tcesp.obter_certidao, ())
+    assert "{cnpj}" in apenados.instrucao
 
 
 def test_falencia_pede_razao_social_e_email_ao_esaj():
@@ -248,7 +254,7 @@ def test_item_nao_obtido_fica_sem_situacao_e_validade():
 
 def test_itens_reais_tem_leitor():
     assert [i.ler for i in seq.ITENS] == [leitura.ler_cnd, leitura.ler_crf, leitura.ler_cndt, leitura.ler_falencia,
-                                          leitura.ler_sancoes_tcu]
+                                          leitura.ler_sancoes_tcu, leitura.ler_apenados_tcesp]
 
 
 def espera_ate_pular(execucao_ref, chave):
@@ -494,3 +500,17 @@ def test_sancoes_com_cadastro_indisponivel_ficam_obtidas_para_conferir(tmp_path)
     assert (estado["estado"], estado["situacao"]) == ("Obtida", "Conferir no PDF")
     assert "CNJ (CNIA, improbidade): Sistema do CNJ esta indisponivel (consulta manual: https://www.cnj.jus.br/" \
            in estado["mensagem"]
+
+
+def test_apenados_nada_consta_mostram_a_validade_impressa(tmp_path):
+    from tests.conftest import TCESP_CERTIDAO
+
+    arquivo = tmp_path / "apenados.pdf"
+    arquivo.write_bytes(pdf_com_texto(*TCESP_CERTIDAO))
+    obter = lambda cnpj, ao_aguardar, sinal, **dados: arquivo  # noqa: E731
+    execucao = seq.Execucao([seq.Item("t", "T", "TCE-SP", obter, "", seq.NAVEGADOR, leitura.ler_apenados_tcesp)],
+                            CNPJ, hoje=lambda: dt.date(2026, 11, 13))
+    execucao.rodar()
+    estado = execucao.itens()[0]
+    assert (estado["estado"], estado["situacao"], estado["validade"], estado["vencida"]) == (
+        "Obtida", "Nada consta", "12/11/2026", True)

@@ -19,7 +19,7 @@ def obter_cnd(cnpj, ao_aguardar=None, sinal=None, **opcoes):
         url=URL,
         padrao=f"Certidao-{cnpj}*.pdf",
         prefixo="cnd",
-        nome_portal="Receita Federal",
+        nome_portal="da Receita Federal",
         ao_aguardar=ao_aguardar,
         sinal=sinal,
         **opcoes,

@@ -28,7 +28,7 @@ def obter_crf(cnpj, ao_aguardar=None, sinal=None, **opcoes):
         url=URL,
         padrao="*.pdf",
         prefixo="crf",
-        nome_portal="Caixa",
+        nome_portal="da Caixa",
         ao_aguardar=ao_aguardar,
         sinal=sinal,
         aceitar=lambda dados: e_crf_do_cnpj(dados, cnpj),

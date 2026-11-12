@@ -123,7 +123,7 @@ def obter_pelo_navegador(
     url,
     padrao,
     prefixo,
-    nome_portal,
+    nome_portal,  # com artigo: "da Receita Federal", "do TCE-SP"
     ao_aguardar=None,
     sinal=None,
     aceitar=None,
@@ -142,7 +142,7 @@ def obter_pelo_navegador(
     desde = time.time()
     copiar(cnpj)
     if not abrir_url(url):
-        raise PortalErro(f"Não foi possível abrir o portal da {nome_portal} no navegador.")
+        raise PortalErro(f"Não foi possível abrir o portal {nome_portal} no navegador.")
     if ao_aguardar:
         ao_aguardar()
     arquivo = aguardar_arquivo(pasta, padrao, desde, tempo_limite_s, intervalo_s,

@@ -10,7 +10,7 @@ Programa local e gratuito para pregoeiros, gestores e fiscais de contratos.
 ![Python](https://img.shields.io/badge/Python-3-3776AB?logo=python&logoColor=white)
 ![Playwright](https://img.shields.io/badge/Playwright-Chromium-2EAD33?logo=playwright&logoColor=white)
 ![Plataforma](https://img.shields.io/badge/plataforma-Windows%20%7C%20Linux-555)
-![Testes](https://img.shields.io/badge/testes-233%20passando-brightgreen)
+![Testes](https://img.shields.io/badge/testes-246%20passando-brightgreen)
 
 </div>
 
@@ -45,11 +45,11 @@ flowchart LR
 O programa abre cada portal de um de dois jeitos:
 
 - **Automatizado:** abre um Chromium à parte, preenche o CNPJ e recebe o PDF. O servidor só resolve o captcha. Usado no TST e no pedido de falência do e-SAJ.
-- **No navegador do servidor:** alguns portais recusam navegador automatizado. Nesses, o programa abre o portal no navegador normal do servidor e copia o CNPJ. O servidor cola, resolve o captcha e baixa o PDF, e o programa o recolhe da pasta Downloads. Usado na Receita Federal e na Caixa.
+- **No navegador do servidor:** alguns portais recusam navegador automatizado. Nesses, o programa abre o portal no navegador normal do servidor e copia o CNPJ. O servidor cola, resolve o captcha e baixa o PDF, e o programa o recolhe da pasta Downloads. Usado na Receita Federal, na Caixa e no TCE-SP.
 
 ## O que já funciona
 
-Hoje o programa emite **cinco** itens em sequência: a CND federal, o CRF do FGTS, a CNDT, a certidão de falência do e-SAJ e a consulta de sanções do TCU (CEIS, CNEP, inidôneos do TCU e improbidade no CNJ). A primeira sequência real foi feita no Windows em 11/11/2026.
+Hoje o programa emite **seis** itens em sequência: a CND federal, o CRF do FGTS, a CNDT, a certidão de falência do e-SAJ, a consulta de sanções do TCU (CEIS, CNEP, inidôneos do TCU e improbidade no CNJ) e a certidão de apenados do TCE-SP. A primeira sequência real foi feita no Windows em 11/11/2026.
 
 - Valida o CNPJ, numérico ou alfanumérico, antes de qualquer consulta externa.
 - Identifica a empresa na BrasilAPI (razão social, UF, situação cadastral, matriz ou filial). Se for filial, mostra a matriz e pede a escolha; se o CNPJ escolhido não for de SP, não abre nenhum portal.
@@ -60,6 +60,7 @@ Hoje o programa emite **cinco** itens em sequência: a CND federal, o CRF do FGT
 - Preenche o pedido da certidão de falência no e-SAJ com a razão social, o CNPJ e o e-mail do servidor, que confere, resolve o reCAPTCHA e envia. Em seguida, consulta o pedido e baixa a certidão, que costuma sair na hora quando nada consta. Se ainda não estiver liberada, o item fica em "Pedido feito: acompanhar", com o número do pedido (prazo do TJSP: até 5 dias).
 - Guarda o e-mail do servidor no computador, para as próximas consultas.
 - Baixa, sem captcha e sem abrir navegador, a Consulta Consolidada de Pessoa Jurídica do TCU e mostra o resultado de cada cadastro (TCU, CNJ, CEIS e CNEP). Se um deles estiver indisponível ou tiver registro, mostra "Conferir no PDF" e o link de consulta manual.
+- Abre no navegador do servidor o formulário da certidão de apenados do TCE-SP e recolhe o PDF de Downloads.
 - Guarda os PDFs na pasta `Certidoes\<CNPJ>\` do usuário (no Windows, `C:\Users\<usuário>\Certidoes\`).
 - Abre cada PDF pela própria tela.
 
@@ -76,7 +77,7 @@ A primeira versão atende empresas com CNPJ de SP.
 | Falência, concordatas e recuperações | e-SAJ/TJSP | ✅ Funcionando (baixada na hora, se já liberada) |
 | Complemento cível de primeiro grau | eproc/TJSP | ⏸️ Adiada (o pedido exige login gov.br) |
 | Sanções: CEIS, CNEP, inidôneos do TCU e CNJ | Consulta Consolidada (TCU) | ✅ Funcionando (sem navegador) |
-| Apenados do TCE-SP | Sistema de Apenados (TCE-SP) | ⏭️ Próxima |
+| Apenados do TCE-SP | Sistema de Apenados (TCE-SP) | ✅ Funcionando (no navegador do servidor) |
 | CND municipal (ISS) de São José dos Campos | iiTributário (PMSJC) | ⏸️ Adiada (sistema em implantação) |
 
 ## Princípios
@@ -141,11 +142,11 @@ sudo apt install python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1
 | 08 | Falência no e-SAJ | Pedido enviado e item em "Pedido feito: acompanhar" | ✅ Concluído |
 | 09 | Complemento no eproc | Pedido com gov.br e os seis itens na tela | ⏸️ Adiado: exige login gov.br |
 | 11 | Sanções no TCU | CEIS, CNEP, TCU e CNJ em um PDF, com o resultado de cada cadastro | ✅ Concluído |
-| 12 | Apenados do TCE-SP | Certidão de apenados, com o captcha resolvido pelo servidor | ⏭️ Próximo |
+| 12 | Apenados do TCE-SP | Certidão de apenados, com o captcha resolvido pelo servidor | ✅ Concluído |
 | 13 | CND municipal de SJC | CND mobiliária para empresas com sede em SJC | ⏸️ Adiado: sistema tributário em implantação |
-| 10 | Validação com CNPJs reais | Resultado de 10 CNPJs de SP conferido com os PDFs | Depois do 12 |
+| 10 | Validação com CNPJs reais | Resultado de 10 CNPJs de SP conferido com os PDFs | ⏭️ Próximo |
 
-Receita e Caixa recusam navegador automatizado (a Caixa bloqueia já no primeiro acesso). Por isso, a CND federal e o CRF são emitidos no navegador normal do servidor, sem contornar a recusa. Quando o portal não emite, o servidor informa pela tela, com o botão "O portal não emitiu".
+Receita, Caixa e TCE-SP recusam navegador automatizado (a Caixa bloqueia já no primeiro acesso; no TCE-SP, o captcha falha). Por isso, a CND federal, o CRF e a certidão de apenados são emitidos no navegador normal do servidor, sem contornar a recusa. Quando o portal não emite, o servidor informa pela tela, com o botão "O portal não emitiu".
 
 ## Documentação
 

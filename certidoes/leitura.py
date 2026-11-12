@@ -161,6 +161,19 @@ def ler_sancoes_tcu(texto: str) -> Leitura:
     return Leitura(situacao, None, emissao, " ".join(partes) or None)
 
 
+def ler_apenados_tcesp(texto: str) -> Leitura:
+    """Certidão de Apenados do TCE-SP: "Nada consta" só com "NÃO constam (…) IMPEDIMENTOS"; validade impressa."""
+    t = normalizar(texto)
+    if "CERTIDAO DE APENADOS" not in t or "TRIBUNAL DE CONTAS DO ESTADO DE SAO PAULO" not in t:
+        return Leitura()
+    validade = _data_unica(t, r"VALIDO ATE " + _DATA)
+    if "CONSTA(M)" in t:  # modelo do portal com impedimentos listados
+        return Leitura(CONFERIR, validade, None, "A certidão lista impedimento(s) de licitação ou contrato: confira o PDF.")
+    if re.search(r"\bNAO CONSTAM, ATE A PRESENTE DATA, \d{2}/\d{2}/\d{4}\b.*?\bIMPEDIMENTOS DE LICITACAO", t):
+        return Leitura(NADA_CONSTA, validade)
+    return Leitura(CONFERIR, validade)
+
+
 def ler(leitor, texto: str, cnpj: str) -> Leitura:
     """Aplica o leitor do tipo de certidão, exigindo que o CNPJ do documento confira."""
     if not texto.strip() or not cnpj_confere(texto, cnpj):

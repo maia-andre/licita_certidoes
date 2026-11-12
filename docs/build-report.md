@@ -1,34 +1,35 @@
 # Build report — 2026-11-12
-Spec: docs/spec.md, versão 1.8
-Incremento: INC-11 — Sanções federais pela Consulta Consolidada do TCU
+Spec: docs/spec.md, versão 1.9
+Incremento: INC-12 — Apenados do TCE-SP
 Rodada: construção
-Testes: 233 passando / 233 total — `.venv\Scripts\python -m pytest -q` (Windows 11, Python 3.14.6)
+Testes: 246 passando / 246 total — `.venv\Scripts\python -m pytest -q` (Windows 11, Python 3.14.6)
 
 ## Requisitos atendidos
-- **REQ-16** — Atendido — novo portal `certidoes/portais/tcu.py`, no novo modo "consulta direta" (RN-09). `obter_consulta` pede o PDF da Consulta Consolidada de Pessoa Jurídica pela API pública que a própria página do TCU usa (`/api/rest/publico/certidoes/<CNPJ>`, `Accept: application/pdf`). Não abre navegador e não pede nada ao servidor. O PDF é salvo como `sancoes-tcu-<data-hora>.pdf` na pasta do CNPJ. A identificação é genérica (`User-Agent: licita_certidoes`), sem dados do usuário.
+- **REQ-17** — Atendido — novo portal `certidoes/portais/tcesp.py`, no modo "navegador do servidor" (RN-09).
+  - `obter_certidao` abre no navegador padrão o formulário "Gerar Certidão" do TCE-SP e deixa o CNPJ na área de transferência.
+  - O servidor cola o CNPJ, clica em "Gerar", conclui a verificação (Turnstile), clica em "OK" e baixa o PDF pelo ícone.
+  - O programa reconhece o PDF em Downloads pelo texto "Certidão de Apenados" e pelo CNPJ, e não pelo nome ("Certidão Apenados.pdf", com sufixo se repetido). Em seguida, guarda o arquivo como `apenados-tcesp-<data-hora>.pdf` na pasta do CNPJ.
 
-  `leitura.ler_sancoes_tcu` lê os quatro cadastros do documento: Licitantes Inidôneos (TCU), CNIA (CNJ), CEIS e CNEP.
-  - Mostra "Nada consta" só se os quatro aparecerem e todos disserem "Nada Consta"; em qualquer outro caso, "Conferir no PDF".
-  - Na mensagem do item, mostra o resultado de cada cadastro.
-  - Na validade, mostra "Não impressa (emitida em dd/mm/aaaa)", com a data da consulta (RN-04).
+  `leitura.ler_apenados_tcesp` lê a certidão:
+  - "Nada consta" quando ela diz "NÃO constam, até a presente data, <data>, (…) IMPEDIMENTOS DE LICITAÇÃO";
+  - "Conferir no PDF" quando lista impedimentos ("CONSTA(M)", do modelo do portal), com aviso na mensagem;
+  - "Conferir no PDF" também para qualquer outro texto;
+  - a validade é a data de "válido até" (RN-04).
 
-  Testes: `tests/test_tcu.py` (7), `tests/test_leitura.py::test_sancoes_*` (5, um sobre o texto real) e `tests/test_sequencia.py::test_sancoes_*` (3).
-- **RN-11** — Atendida — CEIS e CNEP vêm da Consulta Consolidada do TCU. O Portal da Transparência pede captcha (AWS WAF); o TCU, não.
+  Testes:
+  - `tests/test_tcesp.py` (7);
+  - `tests/test_leitura.py::test_apenados_*` (4, um sobre o texto real);
+  - `tests/test_sequencia.py` (ordem e modo, item real, leitura com "Vencida" no dia seguinte).
+- **RN-03 / RN-04** — Atualizadas na spec 1.9: "Nada consta" para apenados; validade impressa, igual à data da consulta.
 
 ## Casos extremos cobertos
-- **CE-14** — Um cadastro indisponível ou com registro mantém o item "Obtida", mostra "Conferir no PDF" e põe na mensagem o nome do cadastro, o resultado e o link de consulta manual. Testes:
-  - `tests/test_leitura.py::test_sancoes_real_com_cnj_indisponivel_pede_conferencia_e_aponta_o_cadastro`;
-  - `::test_sancoes_com_registro_pede_conferencia_com_o_link_do_cadastro`;
-  - `::test_sancoes_sem_um_dos_cadastros_pede_conferencia`;
-  - `tests/test_sequencia.py::test_sancoes_com_cadastro_indisponivel_ficam_obtidas_para_conferir`.
-- **CE-05** — Erro HTTP, portal fora do ar e resposta que não é PDF viram "Falha técnica", com mensagem clara (`tests/test_tcu.py`).
+- **CE-15** — Ocorreu: o Turnstile recusou o Chromium do Playwright (erro 600010) nas duas tentativas assistidas. O item passou ao modo navegador do servidor, sem tentativa de contorno. A versão automatizada escrita para o teste foi descartada.
+- **CE-13** — PDF que não chega a Downloads vira "Falha técnica" por tempo esgotado (`test_sem_a_certidao_termina_em_tempo_esgotado`). PDF de outro CNPJ ou outro documento é ignorado (`test_ignora_pdf_novo_que_nao_e_a_certidao_e_certidao_de_outro_cnpj`).
+- **CE-09** — Texto diferente do conhecido mantém "Obtida" com "Conferir no PDF" (`test_apenados_tcesp_com_texto_desconhecido_pede_conferencia`).
 
 ## Outras mudanças
-- `Leitura.detalhe`: resultado por cadastro, que vai para a mensagem do item obtido.
-- A tela mostra a mensagem do item junto com "Salva em: …". Antes, o caminho do arquivo escondia a mensagem.
-- "Pular" vale até a consulta começar. Depois que o PDF chega, o resultado é mantido.
-- Os testes do TCU dispensam o proxy do Windows para o portal falso local (`NO_PROXY=127.0.0.1`). Na rede da prefeitura, o proxy do sistema interceptava até `127.0.0.1`.
+- `navegador_servidor.obter_pelo_navegador`: o nome do portal agora vem com artigo ("da Receita Federal", "da Caixa", "do TCE-SP"), para a mensagem de erro sair correta.
 
 ## Perguntas em aberto / pendências
-- O CNJ (CNIA) esteve indisponível nas duas consultas reais de 12/11/2026. Se isso for frequente, o item vai aparecer quase sempre como "Conferir no PDF", com o link do CNJ.
-- O texto de um cadastro com registro não foi visto em documento real. Qualquer resultado diferente de "Nada Consta" vira "Conferir no PDF".
+- O texto de uma certidão com impedimentos não foi visto em documento real. A leitura usa o modelo da página do portal ("CONSTA(M)") e, em qualquer caso diferente de "NÃO constam", mostra "Conferir no PDF".
+- A validade impressa é o próprio dia da consulta. A partir do dia seguinte, a tela mostra "Vencida", o que é fiel ao documento, mas pode estranhar o servidor.

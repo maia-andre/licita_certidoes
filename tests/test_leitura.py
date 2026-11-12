@@ -249,3 +249,45 @@ def test_sancoes_sem_um_dos_cadastros_pede_conferencia():
 def test_sancoes_de_outro_cnpj_ou_outro_documento_nao_sao_lidas():
     assert lt.ler(lt.ler_sancoes_tcu, TCU_NADA_CONSTA, "99888777000166") == lt.Leitura()
     assert lt.ler_sancoes_tcu(CNDT_NEGATIVA) == lt.Leitura()
+
+
+# Certidão de Apenados do TCE-SP: texto real de 12/11/2026 (pypdf), com CNPJ fictício.
+TCESP_REAL = """CERTIDÃO DE APENADOS
+O Tribunal de Contas do Estado de São Paulo CERTIFICA que, de acordo com seus assentamentos, ressalvando-se os atos que sobrevenham a
+esta  pesquisa,  NÃO  constam,  até  a  presente  data,  12/11/2026,  às  13h58,  IMPEDIMENTOS  DE  LICITAÇÃO/CONTRATO/CHAMAMENTO
+PÚBLICO/CELEBRAÇÃO DE PARCERIA relacionados ao CNPJ 11.222.333/0001-81  informado.
+
+Este documento foi certificado digitalmente e é válido até 12/11/2026, às 13h58.
+Para conferência:
+acesse o site https://www4.tce.sp.gov.br/apenados/publico
+e informe o código: 9b41dab9-bf90-4ff6-9738-24b5dc2a863c
+ou acesse utilizando o QR Code
+
+Av. Rangel Pestana, 315 - Centro - SP - CEP 01017-906
+ Telefone: (11) 3292-3266             www.tce.sp.gov.br
+Página: 1 de 1
+"""
+
+
+def test_apenados_tcesp_real_nada_consta_com_validade_impressa():
+    lido = lt.ler(lt.ler_apenados_tcesp, TCESP_REAL, CNPJ)
+    assert lido == lt.Leitura(lt.NADA_CONSTA, dt.date(2026, 11, 12))
+
+
+def test_apenados_tcesp_com_impedimentos_pede_conferencia():
+    texto = TCESP_REAL.replace(
+        "NÃO  constam,  até  a  presente  data,  12/11/2026,  às  13h58,  IMPEDIMENTOS",
+        "CONSTA(M),  até  a  presente  data,  12/11/2026,  às  13h58,  o(s) IMPEDIMENTO(S)")
+    lido = lt.ler_apenados_tcesp(texto)
+    assert (lido.situacao, lido.validade) == (lt.CONFERIR, dt.date(2026, 11, 12))
+    assert "impedimento" in lido.detalhe
+
+
+def test_apenados_tcesp_com_texto_desconhecido_pede_conferencia():
+    texto = TCESP_REAL.replace("NÃO  constam", "constam")
+    assert lt.ler_apenados_tcesp(texto).situacao == lt.CONFERIR
+
+
+def test_apenados_tcesp_de_outro_cnpj_ou_outro_documento_nao_sao_lidos():
+    assert lt.ler(lt.ler_apenados_tcesp, TCESP_REAL, "99888777000166") == lt.Leitura()
+    assert lt.ler_apenados_tcesp(CNDT_NEGATIVA) == lt.Leitura()

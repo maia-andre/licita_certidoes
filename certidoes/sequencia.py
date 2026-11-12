@@ -8,7 +8,7 @@ from typing import Callable
 from certidoes import leitura
 from certidoes.cnpj import formatar
 from certidoes.pdf import texto_do_pdf
-from certidoes.portais import caixa, esaj, receita, tcu, tst
+from certidoes.portais import caixa, esaj, receita, tcesp, tcu, tst
 from certidoes.portais.comum import NaoEmitida, Pedido, PortalErro, Pulada, SinalServidor
 
 AGUARDANDO = "Aguardando"
@@ -53,6 +53,8 @@ ITENS = (
          esaj.INSTRUCAO, AUTOMATIZADO, leitura.ler_falencia, precisa=("razao_social", "email", "avisar")),
     Item("sancoes", "Sanções: TCU, CNJ, CEIS e CNEP", "TCU", tcu.obter_consulta, tcu.INSTRUCAO, DIRETO,
          leitura.ler_sancoes_tcu),
+    Item("apenados", "Apenados do TCE-SP", "TCE-SP", tcesp.obter_certidao, tcesp.INSTRUCAO, NAVEGADOR,
+         leitura.ler_apenados_tcesp),
 )
 
 
