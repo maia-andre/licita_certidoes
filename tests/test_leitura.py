@@ -137,3 +137,43 @@ def test_normalizar_tira_acentos_e_espacos():
 def test_cnpj_confere_com_cnpj_alfanumerico():
     assert lt.cnpj_confere("CNPJ: 12.ABC.345/01DE-35", "12ABC34501DE35")
     assert not lt.cnpj_confere("CNPJ: 12.ABC.346/01DE-35", "12ABC34501DE35")
+
+
+# Texto extraído da certidão real de falências do e-SAJ (12/11/2026), com os espaços do PDF.
+FALENCIA_REAL = """ 12/11/2026  0101890915
+ P O D E R  J U D I C I Á R I O
+ TRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO
+ CERTIDÃO ESTADUAL DE DISTRIBUIÇÕES CÍVEIS
+ CERTIDÃO Nº:   6197960  FOLHA: 1/1
+ CERTIFICA   E   DÁ   FÉ   que,   pesquisando   os   registros    de   distribuições   de     PEDIDOS   DE
+ FALÊNCIA,   CONCORDATAS,   RECUPERAÇÕES   JUDICIAIS   E   EXTRAJUDICIAIS  ,   anteriores   a
+ 10/11/2026,  verificou   NADA CONSTAR   como réu/requerido/interessado em nome de: *****
+ VIACAO   SAENS   PENA   LTDA  ,   CNPJ:   17.051.740/0001-50,   conforme   indicação   constante   do   pedido
+ Esta certidão é sem custas.
+ São Paulo, 12 de novembro de 2026.
+"""
+
+
+def test_falencia_real_nada_consta_sem_validade_impressa():
+    lido = lt.ler(lt.ler_falencia, FALENCIA_REAL, "17051740000150")
+    assert lido == lt.Leitura("Nada consta", None, dt.date(2026, 11, 12))
+
+
+def test_falencia_de_outro_cnpj_pede_conferencia():
+    assert lt.ler(lt.ler_falencia, FALENCIA_REAL, "11222333000181") == lt.Leitura()
+
+
+def test_falencia_sem_nada_constar_pede_conferencia():
+    # Certidão com apontamentos: o programa não presume a situação.
+    texto = FALENCIA_REAL.replace("verificou   NADA CONSTAR", "verificou CONSTAR o(s) seguinte(s) processo(s)")
+    assert lt.ler_falencia(texto).situacao == "Conferir no PDF"
+
+
+def test_outro_modelo_do_esaj_nao_e_lido_como_falencia():
+    texto = FALENCIA_REAL.replace("PEDIDOS   DE\n FALÊNCIA", "INVENTÁRIOS")
+    assert lt.ler_falencia(texto) == lt.Leitura()
+
+
+def test_falencia_com_duas_datas_por_extenso_fica_sem_emissao():
+    texto = FALENCIA_REAL + " Brasília, 13 de novembro de 2026."
+    assert lt.ler_falencia(texto).emissao is None

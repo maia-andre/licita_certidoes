@@ -4,7 +4,7 @@ import pytest
 
 import certidoes.app as app
 from certidoes.empresa import Empresa, ErroIdentificacao
-from certidoes.portais.comum import PortalErro
+from certidoes.portais.comum import Pedido, PortalErro
 from certidoes.sequencia import Item
 
 CNPJ = "11222333000181"
@@ -23,9 +23,23 @@ def obtem(caminho):
     return lambda cnpj, ao_aguardar, **kw: pathlib.Path(caminho)
 
 
-def criar_api(itens=None, abrir=None, executar=lambda funcao: funcao(), consultar=matriz_sp):
+class PreferenciasMemoria:
+    """Preferências sem disco, para os testes não gravarem no perfil do usuário."""
+    def __init__(self, email=""):
+        self.gravado = email
+
+    def email(self):
+        return self.gravado
+
+    def salvar_email(self, email):
+        self.gravado = email
+        return True
+
+
+def criar_api(itens=None, abrir=None, executar=lambda funcao: funcao(), consultar=matriz_sp, preferencias=None):
     itens = itens or [item("a", obtem("/tmp/a.pdf")), item("b", obtem("/tmp/b.pdf"))]
-    return app.Api(itens=itens, abrir=abrir or (lambda caminho: None), executar=executar, consultar=consultar)
+    return app.Api(itens=itens, abrir=abrir or (lambda caminho: None), executar=executar, consultar=consultar,
+                   preferencias=preferencias or PreferenciasMemoria())
 
 
 def iniciar(api, cnpj=CNPJ):
@@ -385,3 +399,67 @@ def test_tela_tem_botoes_pular_e_repetir():
     html = app.TELA.read_text(encoding="utf-8")
     for trecho in ("'Pular'", "'Repetir'", "api.pular(", "api.repetir("):
         assert trecho in html
+
+
+def item_falencia(recebidos):
+    def obter(cnpj, ao_aguardar, sinal, **dados):
+        recebidos.append(dados)
+        return Pedido(numero="1")
+    return Item("falencia", "Falência", "e-SAJ", obter, "Envie.", precisa=("razao_social", "email"))
+
+
+@pytest.mark.parametrize("email", [None, "", "   ", "sem-arroba", 42])
+def test_email_vazio_ou_invalido_nao_inicia_a_consulta(email):
+    # CE-12: nenhum portal é aberto e a tela pede a correção do e-mail.
+    recebidos = []
+    api = criar_api(itens=[item("a", obtem("/tmp/a.pdf")), item_falencia(recebidos)])
+    assert api.identificar(CNPJ)["ok"] is True
+    resposta = api.emitir(CNPJ, email)
+    assert resposta == {"ok": False, "mensagem": app.EMAIL_INVALIDO, "campo": "email"}
+    assert recebidos == []
+    assert api.estado() == {"rodando": False, "itens": []}
+    assert api.emitir(CNPJ, "compras@exemplo.gov.br")["ok"] is True  # corrigido, segue
+
+
+def test_pedido_de_falencia_recebe_a_razao_social_identificada_e_o_email():
+    recebidos = []
+    api = criar_api(itens=[item_falencia(recebidos)])
+    assert api.identificar(CNPJ)["ok"] is True
+    assert api.emitir(CNPJ, " compras@exemplo.gov.br ")["ok"] is True
+    assert recebidos == [{"razao_social": "EMPRESA FICTICIA LTDA", "email": "compras@exemplo.gov.br"}]
+    assert api.estado()["itens"][0]["estado"] == "Pedido feito: acompanhar"
+
+
+def test_sem_item_que_precise_de_email_ele_e_dispensado():
+    api = criar_api()
+    assert iniciar(api)["ok"] is True
+
+
+def test_tela_tem_campo_de_email_para_o_esaj():
+    html = app.TELA.read_text(encoding="utf-8")
+    assert 'id="email"' in html and 'type="email"' in html
+    assert "emitir(cnpj, email.value)" in html
+    assert "Pedido feito: acompanhar" in html
+
+
+def test_email_valido_fica_salvo_para_as_proximas_consultas():
+    prefs = PreferenciasMemoria()
+    api = criar_api(itens=[item_falencia([])], preferencias=prefs)
+    assert api.email_salvo() == ""
+    assert api.identificar(CNPJ)["ok"] is True
+    assert api.emitir(CNPJ, " compras@exemplo.gov.br ")["ok"] is True
+    assert prefs.gravado == "compras@exemplo.gov.br"
+    assert api.email_salvo() == "compras@exemplo.gov.br"
+
+
+def test_email_invalido_nao_substitui_o_salvo():
+    prefs = PreferenciasMemoria("compras@exemplo.gov.br")
+    api = criar_api(itens=[item_falencia([])], preferencias=prefs)
+    assert api.identificar(CNPJ)["ok"] is True
+    assert api.emitir(CNPJ, "errado")["ok"] is False
+    assert prefs.gravado == "compras@exemplo.gov.br"
+
+
+def test_tela_abre_com_o_email_salvo():
+    html = app.TELA.read_text(encoding="utf-8")
+    assert "pywebviewready" in html and "email_salvo()" in html

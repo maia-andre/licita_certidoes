@@ -3,7 +3,8 @@ import pathlib
 
 from certidoes import leitura
 from certidoes import sequencia as seq
-from certidoes.portais.comum import NaoEmitida, PortalErro
+from certidoes.portais import esaj
+from certidoes.portais.comum import NaoEmitida, Pedido, PortalErro
 from tests.conftest import pdf_com_texto
 
 CNPJ = "11222333000181"
@@ -22,7 +23,13 @@ def obtem(caminho):
 
 def test_itens_seguem_a_ordem_da_rn01_com_o_modo_de_cada_portal():
     assert [(i.chave, i.modo) for i in seq.ITENS] == [
-        ("cnd", seq.NAVEGADOR), ("crf", seq.NAVEGADOR), ("cndt", seq.AUTOMATIZADO)]
+        ("cnd", seq.NAVEGADOR), ("crf", seq.NAVEGADOR), ("cndt", seq.AUTOMATIZADO), ("falencia", seq.AUTOMATIZADO)]
+
+
+def test_falencia_pede_razao_social_e_email_ao_esaj():
+    falencia = seq.ITENS[-1]
+    assert falencia.obter is esaj.obter_pedido_falencia
+    assert falencia.precisa == ("razao_social", "email", "avisar")
 
 
 def test_estado_inicial_e_aguardando():
@@ -234,7 +241,7 @@ def test_item_nao_obtido_fica_sem_situacao_e_validade():
 
 
 def test_itens_reais_tem_leitor():
-    assert [i.ler for i in seq.ITENS] == [leitura.ler_cnd, leitura.ler_crf, leitura.ler_cndt]
+    assert [i.ler for i in seq.ITENS] == [leitura.ler_cnd, leitura.ler_crf, leitura.ler_cndt, leitura.ler_falencia]
 
 
 def espera_ate_pular(execucao_ref, chave):
@@ -345,3 +352,107 @@ def test_repeticao_limpa_situacao_e_validade_anteriores(tmp_path):
     execucao.repetir("a")
     a = execucao.itens()[0]
     assert (a["estado"], a["situacao"], a["validade"], a["arquivo"]) == ("Falha técnica", None, None, None)
+
+
+def pede(pedido, recebidos=None):
+    def obter(cnpj, ao_aguardar, sinal, **dados):
+        if recebidos is not None:
+            recebidos.append(dados)
+        ao_aguardar()
+        return pedido
+    return obter
+
+
+def item_pedido(obter):
+    return seq.Item("f", "Falência", "e-SAJ", obter, "Envie.", seq.AUTOMATIZADO, precisa=("razao_social", "email"))
+
+
+def test_pedido_aceito_vira_pedido_feito_acompanhar_com_numero_e_email():
+    pedido = Pedido(numero="101890915", data="12/11/2026", email="compras@exemplo.gov.br", prazo_dias="05")
+    execucao = seq.Execucao([item_pedido(pede(pedido)), item("b", obtem("/b.pdf"))], CNPJ,
+                            dados={"razao_social": "X", "email": "compras@exemplo.gov.br"})
+    execucao.rodar()
+    falencia, seguinte = execucao.itens()
+    assert falencia["estado"] == "Pedido feito: acompanhar"
+    assert falencia["mensagem"] == ("Pedido nº 101890915 de 12/11/2026 aceito pelo portal. As instruções para emitir "
+                                    "a certidão vão para compras@exemplo.gov.br. Prazo máximo informado: 05 dias.")
+    assert (falencia["arquivo"], falencia["situacao"], falencia["validade"]) == (None, None, None)
+    assert seguinte["estado"] == "Obtida"
+
+
+def test_pedido_sem_numero_ainda_e_pedido_feito():
+    execucao = seq.Execucao([item_pedido(pede(Pedido()))], CNPJ, dados={"razao_social": "X", "email": "a@b.com"})
+    execucao.rodar()
+    assert execucao.itens()[0]["estado"] == "Pedido feito: acompanhar"
+    assert execucao.itens()[0]["mensagem"] == "Pedido aceito pelo portal."
+
+
+def test_item_recebe_so_os_dados_que_precisa():
+    recebidos = []
+    execucao = seq.Execucao([item_pedido(pede(Pedido(), recebidos))], CNPJ,
+                            dados={"razao_social": "EMPRESA", "email": "a@b.com", "outro": "nao"})
+    execucao.rodar()
+    assert recebidos == [{"razao_social": "EMPRESA", "email": "a@b.com"}]
+
+
+def test_pedido_feito_nao_pode_ser_repetido():
+    # Repetir enviaria um segundo pedido ao TJSP.
+    chamadas = []
+    execucao = seq.Execucao([item_pedido(pede(Pedido(), chamadas))], CNPJ, dados={"razao_social": "X", "email": "a@b.com"})
+    execucao.rodar()
+    assert execucao.pode_repetir("f") is False
+    execucao.repetir("f")
+    assert len(chamadas) == 1
+
+
+def test_falha_no_pedido_pode_ser_repetida_com_os_mesmos_dados():
+    recebidos = []
+    tentativas = iter([PortalErro("Tempo esgotado aguardando o envio do pedido."), Pedido(numero="1")])
+
+    def obter(cnpj, ao_aguardar, sinal, **dados):
+        recebidos.append(dados)
+        resultado = next(tentativas)
+        if isinstance(resultado, Exception):
+            raise resultado
+        return resultado
+
+    execucao = seq.Execucao([item_pedido(obter)], CNPJ, dados={"razao_social": "X", "email": "a@b.com"})
+    execucao.rodar()
+    assert execucao.itens()[0]["estado"] == "Falha técnica"
+    execucao.repetir("f")
+    assert execucao.itens()[0]["estado"] == "Pedido feito: acompanhar"
+    assert recebidos == [{"razao_social": "X", "email": "a@b.com"}] * 2
+
+
+def test_avisar_atualiza_a_mensagem_do_item_em_andamento():
+    vistos = []
+
+    def obter(cnpj, ao_aguardar, sinal, avisar, **dados):
+        avisar("Consultando...")
+        vistos.append((execucao.itens()[0]["estado"], execucao.itens()[0]["mensagem"]))
+        return Pedido(numero="1")
+
+    execucao = seq.Execucao([seq.Item("f", "F", "e-SAJ", obter, "", precisa=("email", "avisar"))], CNPJ,
+                            dados={"email": "a@b.com"})
+    execucao.rodar()
+    assert vistos == [("Em andamento", "Consultando...")]
+
+
+def test_observacao_do_pedido_entra_na_mensagem():
+    pedido = Pedido(numero="1", observacao="Ainda não liberada.")
+    execucao = seq.Execucao([item_pedido(pede(pedido))], CNPJ, dados={"razao_social": "X", "email": "a@b.com"})
+    execucao.rodar()
+    assert execucao.itens()[0]["mensagem"] == "Pedido nº 1 aceito pelo portal. Ainda não liberada."
+
+
+def test_falencia_baixada_mostra_nada_consta_e_a_emissao_no_lugar_da_validade(tmp_path):
+    from tests.conftest import ESAJ_CERTIDAO
+
+    arquivo = tmp_path / "falencia.pdf"
+    arquivo.write_bytes(pdf_com_texto(*ESAJ_CERTIDAO))
+    obter = lambda cnpj, ao_aguardar, sinal, **dados: arquivo  # noqa: E731
+    execucao = seq.Execucao([seq.Item("f", "F", "e-SAJ", obter, "", ler=leitura.ler_falencia)], CNPJ)
+    execucao.rodar()
+    estado = execucao.itens()[0]
+    assert (estado["estado"], estado["situacao"], estado["validade"], estado["vencida"]) == (
+        "Obtida", "Nada consta", "Não impressa (emitida em 12/11/2026)", False)

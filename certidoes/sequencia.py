@@ -8,8 +8,8 @@ from typing import Callable
 from certidoes import leitura
 from certidoes.cnpj import formatar
 from certidoes.pdf import texto_do_pdf
-from certidoes.portais import caixa, receita, tst
-from certidoes.portais.comum import NaoEmitida, PortalErro, Pulada, SinalServidor
+from certidoes.portais import caixa, esaj, receita, tst
+from certidoes.portais.comum import NaoEmitida, Pedido, PortalErro, Pulada, SinalServidor
 
 AGUARDANDO = "Aguardando"
 EM_ANDAMENTO = "Em andamento"
@@ -18,6 +18,7 @@ OBTIDA = "Obtida"
 NAO_EMITIDA = "Não emitida"
 PULADA = "Pulada"
 FALHA = "Falha técnica"
+PEDIDO_FEITO = "Pedido feito: acompanhar"
 REPETIVEIS = (FALHA, NAO_EMITIDA, PULADA)  # REQ-14
 
 # Modos de acesso (RN-09)
@@ -32,18 +33,40 @@ class Item:
     chave: str
     nome: str
     portal: str
-    obter: Callable  # obter(cnpj, ao_aguardar=..., sinal=SinalServidor) -> Path; levanta PortalErro/NaoEmitida/Pulada
+    obter: Callable  # obter(cnpj, ao_aguardar=..., sinal=SinalServidor, **dados) -> Path | Pedido;
+    #                  levanta PortalErro/NaoEmitida/Pulada
     instrucao: str  # texto mostrado em "Aguardando servidor"; aceita {cnpj}
     modo: str = AUTOMATIZADO
     ler: Callable | None = None  # ler(texto) -> leitura.Leitura
+    # Dados da consulta repassados a obter(), p. ex. ("razao_social", "email"). "avisar" é especial:
+    # recebe avisar(mensagem), que atualiza a mensagem do item em andamento.
+    precisa: tuple = ()
 
 
-# Ordem da RN-01. Os demais itens entram nos próximos incrementos.
+# Ordem da RN-01. A Certidão Única estadual (item 4) está adiada (RN-10); o eproc (item 6) entra no INC-09.
 ITENS = (
     Item("cnd", "CND federal", "Receita Federal", receita.obter_cnd, receita.INSTRUCAO, NAVEGADOR, leitura.ler_cnd),
     Item("crf", "CRF FGTS", "Caixa", caixa.obter_crf, caixa.INSTRUCAO, NAVEGADOR, leitura.ler_crf),
     Item("cndt", "CNDT", "TST", tst.obter_cndt, tst.INSTRUCAO, AUTOMATIZADO, leitura.ler_cndt),
+    Item("falencia", "Falência, concordatas e recuperações", "e-SAJ/TJSP", esaj.obter_pedido_falencia,
+         esaj.INSTRUCAO, AUTOMATIZADO, leitura.ler_falencia, precisa=("razao_social", "email", "avisar")),
 )
+
+
+def _mensagem_pedido(pedido: Pedido) -> str:
+    partes = ["Pedido"]
+    if pedido.numero:
+        partes.append(f"nº {pedido.numero}")
+    if pedido.data:
+        partes.append(f"de {pedido.data}")
+    texto = " ".join(partes) + " aceito pelo portal."
+    if pedido.email:
+        texto += f" As instruções para emitir a certidão vão para {pedido.email}."
+    if pedido.prazo_dias:
+        texto += f" Prazo máximo informado: {pedido.prazo_dias} dias."
+    if pedido.observacao:
+        texto += f" {pedido.observacao}"
+    return texto
 
 
 def _mensagem_nao_emitida(texto: str) -> str:
@@ -56,8 +79,9 @@ def _mensagem_nao_emitida(texto: str) -> str:
 class Execucao:
     """Percorre os itens para um CNPJ. Uma falha em um item não interrompe os demais (CE-05)."""
 
-    def __init__(self, itens, cnpj, hoje=dt.date.today):
+    def __init__(self, itens, cnpj, hoje=dt.date.today, dados=None):
         self._itens = tuple(itens)
+        self._dados = dict(dados or {})  # razão social, e-mail etc.; só em memória
         self._por_chave = {item.chave: item for item in self._itens}
         self._cnpj = cnpj
         self._hoje = hoje
@@ -99,10 +123,14 @@ class Execucao:
         self._marcar(item.chave, EM_ANDAMENTO)
         instrucao = item.instrucao.format(cnpj=formatar(self._cnpj))
         try:
-            arquivo = item.obter(
+            extras = {nome: self._dados[nome] for nome in item.precisa if nome != "avisar"}
+            if "avisar" in item.precisa:
+                extras["avisar"] = lambda mensagem: self._marcar(item.chave, EM_ANDAMENTO, mensagem)
+            resultado = item.obter(
                 self._cnpj,
                 ao_aguardar=lambda: self._marcar(item.chave, AGUARDANDO_SERVIDOR, instrucao),
                 sinal=sinal,
+                **extras,
             )
         except Pulada:
             self._marcar(item.chave, PULADA, "Pulada pelo servidor.")
@@ -113,8 +141,11 @@ class Execucao:
         except Exception as erro:  # noqa: BLE001 — qualquer falha vira "Falha técnica" e a sequência segue
             self._marcar(item.chave, FALHA, f"Erro inesperado: {erro}")
         else:
-            self._marcar(item.chave, OBTIDA, "", arquivo)
-            self._registrar_leitura(item, arquivo)
+            if isinstance(resultado, Pedido):
+                self._marcar(item.chave, PEDIDO_FEITO, _mensagem_pedido(resultado))
+            else:
+                self._marcar(item.chave, OBTIDA, "", resultado)
+                self._registrar_leitura(item, resultado)
         finally:
             with self._trava:
                 self._sinais.pop(item.chave, None)
@@ -128,7 +159,12 @@ class Execucao:
                 lido = leitura.Leitura()
         except Exception:  # noqa: BLE001 — a certidão continua "Obtida"; só a leitura falhou
             lido = leitura.Leitura()
-        validade = lido.validade.strftime("%d/%m/%Y") if lido.validade else leitura.CONFERIR
+        if lido.validade:
+            validade = lido.validade.strftime("%d/%m/%Y")
+        elif lido.emissao:  # certidão sem validade impressa (falência): mostra a emissão, sem calcular prazo
+            validade = f"Não impressa (emitida em {lido.emissao:%d/%m/%Y})"
+        else:
+            validade = leitura.CONFERIR
         vencida = lido.validade is not None and lido.validade < self._hoje()
         with self._trava:
             self._estado[item.chave].update(situacao=lido.situacao, validade=validade, vencida=vencida)

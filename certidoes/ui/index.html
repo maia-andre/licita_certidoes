@@ -16,6 +16,7 @@
   td.detalhe button { margin-top: 6px; padding: 4px 12px; }
   .erro { color: #b00020; }
   .Obtida { color: #1b6e1b; font-weight: 600; }
+  .pedido { color: #0b4f8a; font-weight: 600; }
   .alerta { color: #8a4b00; font-weight: 600; }
   .aviso { margin-top: 24px; padding: 10px 12px; background: #f3f3f3; border-left: 4px solid #777; font-size: 14px; }
   .nao-emitida { margin-top: 10px; }
@@ -27,6 +28,9 @@
   .empresa dt { font-weight: 600; }
   .empresa dd { margin: 0; }
   #escolhas button { margin-right: 8px; }
+  .campo-email { margin-top: 14px; }
+  .campo-email small { display: block; margin-top: 4px; font-size: 13px; color: #555; }
+  input[aria-invalid="true"] { outline: 2px solid #b00020; }
   [hidden] { display: none; }
 </style>
 </head>
@@ -40,6 +44,11 @@
   <section id="empresa" class="empresa" hidden>
     <div id="dados-empresa"></div>
     <p id="aviso-empresa"></p>
+    <div class="campo-email">
+      <label for="email">E-mail para o pedido de falência no e-SAJ</label>
+      <input id="email" type="email" autocomplete="email">
+      <small>O TJSP envia para este e-mail as instruções para emitir a certidão. O e-mail fica salvo neste computador para as próximas consultas.</small>
+    </div>
     <div id="escolhas"></div>
   </section>
   <p id="status" role="status"></p>
@@ -56,6 +65,7 @@
   const dadosEmpresa = document.getElementById('dados-empresa');
   const avisoEmpresa = document.getElementById('aviso-empresa');
   const escolhas = document.getElementById('escolhas');
+  const email = document.getElementById('email');
   const avisoFilial = document.getElementById('aviso-filial');
   const tabela = document.getElementById('itens');
   const corpo = tabela.querySelector('tbody');
@@ -145,7 +155,8 @@
       if (!linhas.has(item.chave)) linhas.set(item.chave, criarLinha(item));
       const l = linhas.get(item.chave);
       l.estado.textContent = item.estado;
-      l.estado.className = {'Obtida': 'Obtida', 'Falha técnica': 'erro', 'Não emitida': 'alerta'}[item.estado] || '';
+      l.estado.className = {'Obtida': 'Obtida', 'Falha técnica': 'erro', 'Não emitida': 'alerta',
+                            'Pedido feito: acompanhar': 'pedido'}[item.estado] || '';
       l.situacao.textContent = item.situacao || '';
       l.situacao.className = item.situacao === 'Conferir no PDF' ? 'alerta' : '';
       l.validade.textContent = item.validade ? item.validade + (item.vencida ? ' (Vencida)' : '') : '';
@@ -164,6 +175,7 @@
 
   function travar(sim) {
     identificar.disabled = sim;
+    email.disabled = sim;
     for (const l of linhas.values()) l.repetir.disabled = sim;
     for (const b of escolhas.querySelectorAll('button')) b.disabled = sim || b.dataset.bloqueado === 'sim';
   }
@@ -235,11 +247,16 @@
 
   async function iniciar(cnpj) {
     travar(true);
+    email.removeAttribute('aria-invalid');
     try {
-      const r = await window.pywebview.api.emitir(cnpj);
+      const r = await window.pywebview.api.emitir(cnpj, email.value);
       if (!r.ok) {
         mostrar(r.mensagem, true);
         travar(false);
+        if (r.campo === 'email') {
+          email.setAttribute('aria-invalid', 'true');
+          email.focus();
+        }
         return;
       }
       corpo.replaceChildren();
@@ -253,6 +270,15 @@
       travar(false);
     }
   }
+
+  window.addEventListener('pywebviewready', async () => {
+    try {
+      const salvo = await window.pywebview.api.email_salvo();
+      if (salvo && !email.value) email.value = salvo;
+    } catch (erro) {
+      // sem e-mail salvo: o servidor digita
+    }
+  });
 
   document.getElementById('formulario').addEventListener('submit', async (evento) => {
     evento.preventDefault();

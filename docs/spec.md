@@ -1,6 +1,6 @@
 # Spec: Obtenção assistida de certidões de fornecedores
-Versão: 1.4 — 2026-11-11 | Status: aprovada
-Alterações: 1.1 — Windows passa a ser a plataforma principal (RNF-01). 1.2 — Modo "navegador do servidor" para portais que recusam navegador automatizado (REQ-05, REQ-06, RNF-01, RN-09, CE-13). 1.3 — Caixa também no modo navegador do servidor; reconhecimento do PDF pelo conteúdo; "Não emitida" informada pelo servidor nesse modo (REQ-11, RN-09). 1.4 — Certidão Única estadual (item 4, RN-08, CE-07) adiada: o SIDEB exige login gov.br para emitir.
+Versão: 1.6 — 2026-11-12 | Status: aprovada
+Alterações: 1.1 — Windows passa a ser a plataforma principal (RNF-01). 1.2 — Modo "navegador do servidor" para portais que recusam navegador automatizado (REQ-05, REQ-06, RNF-01, RN-09, CE-13). 1.3 — Caixa também no modo navegador do servidor; reconhecimento do PDF pelo conteúdo; "Não emitida" informada pelo servidor nesse modo (REQ-11, RN-09). 1.4 — Certidão Única estadual (item 4, RN-08, CE-07) adiada: o SIDEB exige login gov.br para emitir. 1.5 — e-SAJ testado: aceita navegador automatizado (RN-09); prazo do TJSP informado (pergunta 4). 1.6 — Falência: consulta imediata em "Visualizar Certidão" e download do PDF quando já liberado (REQ-12); situação "Nada consta" (RN-03); data de emissão no lugar da validade não impressa (RN-04); e-mail salvo no computador (REQ-12).
 
 ## Objetivo
 Em cada habilitação e a cada nota fiscal de contrato, servidores da Prefeitura de São José dos Campos (pregoeiros, gestores e fiscais) reúnem à mão, em portais diferentes, as certidões de regularidade do fornecedor. O projeto é um programa local em código aberto no qual o servidor digita um CNPJ, resolve apenas os captchas e logins que os portais exigirem e vê, em uma tela simples, a situação e a validade de cada certidão, com o PDF à mão. A primeira versão atende empresas com CNPJ de SP.
@@ -19,7 +19,7 @@ Em cada habilitação e a cada nota fiscal de contrato, servidores da Prefeitura
 - **REQ-09** — A tela mostra cada item da RN-01 com seu estado (RN-02), atualizado durante a execução.
 - **REQ-10** — Para certidão obtida, o programa lê o texto do PDF e mostra a situação e a data de validade (RN-03 e RN-04).
 - **REQ-11** — Quando o portal não emitir a certidão, a tela mostra o estado "Não emitida" e a mensagem informada pelo portal. No modo "navegador do servidor", o programa não vê o portal: a tela oferece o botão "O portal não emitiu" e um campo opcional para o servidor colar a mensagem do portal.
-- **REQ-12** — Na falência pelo e-SAJ, o programa preenche o pedido com os dados conhecidos e o e-mail informado pelo servidor, aguarda o captcha e, enviado o pedido, marca o item como "Pedido feito: acompanhar".
+- **REQ-12** — Na falência pelo e-SAJ, o programa preenche o pedido com os dados conhecidos e o e-mail informado pelo servidor e aguarda o captcha. Enviado o pedido, consulta logo em "Visualizar Certidão" (número, data e CNPJ do pedido; sem captcha), em até 3 tentativas. Se a certidão já estiver liberada, guarda o PDF e o item fica "Obtida"; senão, o item fica "Pedido feito: acompanhar", com número, data e prazo do pedido. O e-mail fica salvo nas preferências do usuário no computador e volta preenchido na próxima consulta.
 - **REQ-13** — Na falência pelo eproc, o programa abre o portal para o servidor entrar com o gov.br e fazer o pedido. Quando o servidor confirmar na tela, o item fica como "Pedido feito: acompanhar".
 - **REQ-14** — O servidor pode repetir apenas um item que tenha ficado em "Falha técnica", "Não emitida" ou "Pulada", sem refazer os demais.
 - **REQ-15** — A tela mostra um aviso permanente de que o programa só reúne informações e de que a análise e a decisão cabem ao servidor.
@@ -45,14 +45,14 @@ Em cada habilitação e a cada nota fiscal de contrato, servidores da Prefeitura
   | 6 | Complemento cível de primeiro grau | eproc/TJSP | Assistido (REQ-13) |
 
 - **RN-02** — Estados de um item: "Aguardando", "Em andamento", "Aguardando servidor", "Obtida", "Não emitida", "Falha técnica", "Pulada" e "Pedido feito: acompanhar". "Falha técnica" e "Pulada" nunca indicam irregularidade da empresa.
-- **RN-03** — Situação exibida: "Negativa", "Positiva com efeitos de negativa", "Positiva", "Regular" (CRF) ou "Conferir no PDF". O programa usa "Conferir no PDF" sempre que não identificar a situação com segurança e nunca a presume.
-- **RN-04** — A validade exibida é a data impressa no documento. Sem data identificável, o programa mostra "Conferir no PDF", em vez de calcular um prazo padrão.
+- **RN-03** — Situação exibida: "Negativa", "Positiva com efeitos de negativa", "Positiva", "Regular" (CRF), "Nada consta" (falência, quando a certidão diz "verificou NADA CONSTAR") ou "Conferir no PDF". O programa usa "Conferir no PDF" sempre que não identificar a situação com segurança e nunca a presume.
+- **RN-04** — A validade exibida é a data impressa no documento. Sem data identificável, o programa mostra "Conferir no PDF", em vez de calcular um prazo padrão. A certidão de falência do e-SAJ não imprime validade: o programa mostra "Não impressa (emitida em dd/mm/aaaa)", com a data de emissão do documento, e não calcula prazo.
 - **RN-05** — O programa não resolve nem contorna captcha, não usa serviço de terceiros para isso e não usa agregador pago.
 - **RN-06** — O programa não emite juízo de habilitação, inabilitação ou bloqueio de pagamento. Base: arts. 63, III; 68; 69, II; 91, §4º; e 92, XVI, da Lei 14.133/2021.
 - **RN-07** — A verificação de UF (REQ-04) usa o CNPJ escolhido pelo servidor. Se ele escolher uma filial, a tela avisa que a certidão de falência deve seguir o distribuidor da sede (art. 69, II).
 - **RN-08** — A certidão estadual de SP segue a Resolução Conjunta SFP-PGE nº 1/2026, vigente desde 14/10/2026: o programa pede apenas a Certidão Única, e não as duas antigas.
 - **RN-09** — Modos de acesso aos portais:
-  - **Automatizado:** o programa abre um Chromium visível pelo Playwright, preenche os dados e recebe o PDF. Usado nos portais que aceitam navegador automatizado (TST).
+  - **Automatizado:** o programa abre um Chromium visível pelo Playwright, preenche os dados e recebe o PDF. Usado nos portais que aceitam navegador automatizado: TST e e-SAJ. No e-SAJ, o reCAPTCHA aceitou o Chromium do Playwright em 12/11/2026; o programa preenche o pedido, e o servidor marca a confirmação, resolve o reCAPTCHA e envia. O pedido é reconhecido pela página de resultado ("pedido foi cadastrado com sucesso", com número e data).
   - **Navegador do servidor:** o programa abre o portal no navegador padrão do servidor, coloca o CNPJ na área de transferência e mostra o CNPJ na tela. O servidor cola o CNPJ, resolve o captcha e baixa o PDF. O programa vigia a pasta Downloads, reconhece o arquivo pelo nome que o portal usa ou pelo texto do PDF (tipo de certidão e CNPJ) e o move para a pasta do CNPJ. Usado nos portais que recusam navegador automatizado:
     - Receita Federal: `CaptchaFalhaValidacao`, código 023, testado em 11/11/2026. PDF reconhecido pelo nome `Certidao-<CNPJ>.pdf`.
     - Caixa: bloqueio de robôs (Radware/ShieldSquare) já no primeiro acesso, testado em 11/11/2026. O CRF é uma página que o servidor salva como PDF pela opção "Imprimir"; o PDF é reconhecido pelo texto "Certificado de Regularidade do FGTS" e pelo CNPJ. Não repetir acessos automatizados à Caixa: a página de bloqueio registra o IP da rede da prefeitura.
@@ -79,7 +79,7 @@ Em cada habilitação e a cada nota fiscal de contrato, servidores da Prefeitura
 - CND municipal, CEIS, CNEP e outras consultas de sanções
 - Empresas com CNPJ fora de SP
 - Agregadores pagos, APIs do Serpro e do Conecta gov.br
-- Leitura de caixa de e-mail e download automático da certidão de falência
+- Leitura de caixa de e-mail e acompanhamento posterior de pedidos de falência ainda não liberados
 - Certidão anterior reaproveitada, histórico, alertas de vencimento e monitoramento de contratos
 - Processamento de vários CNPJs em lote
 - Uso de IA para ler documentos
@@ -98,7 +98,7 @@ Em cada habilitação e a cada nota fiscal de contrato, servidores da Prefeitura
 
 ## Perguntas em aberto
 1. **Pasta dos PDFs:** esta spec adota uma pasta local por CNPJ apenas para o REQ-08 funcionar. O destino definitivo segue fora de escopo.
-2. **Viabilidade dos portais:** TST aceita navegador automatizado; Receita recusa (RN-09). Falta testar Caixa, SIDEB, e-SAJ e eproc, inclusive quais campos o SIDEB e o e-SAJ pedem.
+2. **Viabilidade dos portais:** TST e e-SAJ aceitam navegador automatizado; Receita e Caixa recusam (RN-09); o SIDEB exige gov.br (RN-10). Falta testar o eproc.
 3. **eproc para terceiros:** não confirmei se o login gov.br do servidor permite pedir certidão de outro CNPJ. Se não permitir, o item 6 passa a ser apenas um aviso com o link.
 5. **Certidão Única estadual:** retomar se o SIDEB oferecer emissão sem login, ou se o login gov.br do servidor permitir emitir para CNPJ de terceiro (o servidor entraria no gov.br no próprio navegador, no modo da RN-09). Não testado em 11/11/2026.
-4. **Prazo e custo no TJSP:** não encontrei prazo nem confirmei gratuidade dos itens 5 e 6.
+4. **Prazo e custo no TJSP:** no item 5, o e-SAJ informa "Prazo máximo para liberação da Certidão 05 dias" e não mostrou cobrança no pedido de 12/11/2026. Falta o item 6.

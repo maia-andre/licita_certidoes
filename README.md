@@ -10,7 +10,7 @@ Programa local e gratuito para pregoeiros, gestores e fiscais de contratos.
 ![Python](https://img.shields.io/badge/Python-3-3776AB?logo=python&logoColor=white)
 ![Playwright](https://img.shields.io/badge/Playwright-Chromium-2EAD33?logo=playwright&logoColor=white)
 ![Plataforma](https://img.shields.io/badge/plataforma-Windows%20%7C%20Linux-555)
-![Testes](https://img.shields.io/badge/testes-150%20passando-brightgreen)
+![Testes](https://img.shields.io/badge/testes-218%20passando-brightgreen)
 
 </div>
 
@@ -44,12 +44,12 @@ flowchart LR
 
 O programa abre cada portal de um de dois jeitos:
 
-- **Automatizado:** abre um Chromium à parte, preenche o CNPJ e recebe o PDF. O servidor só resolve o captcha. Usado no TST.
+- **Automatizado:** abre um Chromium à parte, preenche o CNPJ e recebe o PDF. O servidor só resolve o captcha. Usado no TST e no pedido de falência do e-SAJ.
 - **No navegador do servidor:** alguns portais recusam navegador automatizado. Nesses, o programa abre o portal no navegador normal do servidor e copia o CNPJ. O servidor cola, resolve o captcha e baixa o PDF, e o programa o recolhe da pasta Downloads. Usado na Receita Federal e na Caixa.
 
 ## O que já funciona
 
-Hoje o programa emite **três** certidões em sequência: a CND federal, o CRF do FGTS e a CNDT. A primeira sequência real foi feita no Windows em 11/11/2026.
+Hoje o programa emite **quatro** certidões em sequência: a CND federal, o CRF do FGTS, a CNDT e a certidão de falência do e-SAJ. A primeira sequência real foi feita no Windows em 11/11/2026.
 
 - Valida o CNPJ, numérico ou alfanumérico, antes de qualquer consulta externa.
 - Identifica a empresa na BrasilAPI (razão social, UF, situação cadastral, matriz ou filial). Se for filial, mostra a matriz e pede a escolha; se o CNPJ escolhido não for de SP, não abre nenhum portal.
@@ -57,6 +57,8 @@ Hoje o programa emite **três** certidões em sequência: a CND federal, o CRF d
 - Lê de cada PDF a situação (Negativa, Positiva com efeitos de negativa, Regular...) e a validade, avisando quando está vencida. Na dúvida, mostra "Conferir no PDF".
 - Se um portal falhar, marca "Falha técnica" e segue para a próxima certidão.
 - Permite pular a certidão em andamento e repetir só a que falhou, não foi emitida ou foi pulada.
+- Preenche o pedido da certidão de falência no e-SAJ com a razão social, o CNPJ e o e-mail do servidor, que confere, resolve o reCAPTCHA e envia. Em seguida, consulta o pedido e baixa a certidão, que costuma sair na hora quando nada consta. Se ainda não estiver liberada, o item fica em "Pedido feito: acompanhar", com o número do pedido (prazo do TJSP: até 5 dias).
+- Guarda o e-mail do servidor no computador, para as próximas consultas.
 - Guarda os PDFs na pasta `Certidoes\<CNPJ>\` do usuário (no Windows, `C:\Users\<usuário>\Certidoes\`).
 - Abre cada PDF pela própria tela.
 
@@ -70,7 +72,7 @@ A primeira versão atende empresas com CNPJ de SP.
 | CNDT | TST | ✅ Funcionando |
 | CRF FGTS | Caixa | ✅ Funcionando (no navegador do servidor) |
 | Certidão Única estadual | SIDEB (Sefaz-SP/PGE-SP) | ⏸️ Adiada (o SIDEB exige login gov.br) |
-| Falência, concordatas e recuperações | e-SAJ/TJSP | Planejada, com pedido assistido |
+| Falência, concordatas e recuperações | e-SAJ/TJSP | ✅ Funcionando (baixada na hora, se já liberada) |
 | Complemento cível de primeiro grau | eproc/TJSP | Planejada, com pedido assistido |
 
 ## Princípios
@@ -132,8 +134,8 @@ sudo apt install python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1
 | 05 | Identificação da empresa | Dados da BrasilAPI, escolha de filial e recusa fora de SP | ✅ Concluído |
 | 06 | Certidão Única estadual | Emissão pelo SIDEB | ⏸️ Adiado: exige login gov.br |
 | 07 | Pular e repetir itens | Refazer só o item que falhou | ✅ Concluído |
-| 08 | Falência no e-SAJ | Pedido enviado e item em "Pedido feito: acompanhar" | ⏭️ Próximo |
-| 09 | Complemento no eproc | Pedido com gov.br e os seis itens na tela | Pendente |
+| 08 | Falência no e-SAJ | Pedido enviado e item em "Pedido feito: acompanhar" | ✅ Concluído |
+| 09 | Complemento no eproc | Pedido com gov.br e os seis itens na tela | ⏭️ Próximo |
 | 10 | Validação com CNPJs reais | Resultado de 10 CNPJs de SP conferido com os PDFs | Pendente |
 
 Receita e Caixa recusam navegador automatizado (a Caixa bloqueia já no primeiro acesso). Por isso, a CND federal e o CRF são emitidos no navegador normal do servidor, sem contornar a recusa. Quando o portal não emite, o servidor informa pela tela, com o botão "O portal não emitiu".

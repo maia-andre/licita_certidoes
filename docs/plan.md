@@ -1,6 +1,6 @@
 # Plan: Obtenção assistida de certidões de fornecedores
-Spec: docs/spec.md, versão 1.4 | Gerado: 2026-11-06
-Progresso: 6/10 incrementos concluídos (1 adiado)
+Spec: docs/spec.md, versão 1.6 | Gerado: 2026-11-06
+Progresso: 7/10 incrementos concluídos (1 adiado)
 
 ## Backlog
 
@@ -47,7 +47,7 @@ Depende de: INC-05 (INC-06 adiado)
 Entrega verificável: o servidor pula um item, repete só esse item depois e, ao fechar o navegador no meio do fluxo, a tela continua aberta com o item em "Falha técnica".
 
 ### INC-08 — Pedido de falência no e-SAJ
-Status: pendente
+Status: concluído (2026-11-12)
 Itens da spec: REQ-12 | CE-12
 Depende de: INC-07
 Entrega verificável: um CNPJ real tem o pedido de falência enviado ao e-SAJ com o e-mail informado, e o item fica em "Pedido feito: acompanhar".
@@ -73,3 +73,5 @@ O INC-02 antecipa o maior risco técnico (hCaptcha em navegador automatizado). S
 - **2026-11-11 — Receita recusa navegador automatizado.** No Chromium do Playwright, o hCaptcha passa, mas a API da Receita responde `CaptchaFalhaValidacao` (código 023) em "Emitir" e em "Consultar". No navegador normal do servidor, o mesmo CNPJ funcionou. Decisão aprovada: criar o modo "navegador do servidor" (spec 1.2, RN-09) para a CND federal, sem tentar contornar a recusa. O TST continua automatizado.
 - **2026-11-11 — Caixa bloqueia navegador automatizado.** Um único acesso de leitura em Chromium headless foi barrado pelo bot manager da Caixa (Radware/ShieldSquare). Sem novas tentativas automatizadas, para não marcar o IP da prefeitura. Teste de controle no navegador normal: o CRF é uma página, salva como PDF pela opção "Imprimir", com nome livre. Decisão aprovada (spec 1.3): CRF no modo navegador do servidor, PDF reconhecido pelo texto, e botão "O portal não emitiu" com campo opcional para a mensagem.
 - **2026-11-11 — Certidão Única estadual adiada.** O SIDEB (`https://www4.fazenda.sp.gov.br/SIDEB/CertidaoNegativaDebitos`) aceita navegador automatizado na página inicial, mas "Emitir eCND" leva ao login gov.br, com hCaptcha. Decisão do servidor: deixar o item de fora por enquanto (spec 1.4, RN-10). O INC-07 depende só dos itens já existentes. O INC-09 (eproc) também envolve gov.br e deve ser reavaliado antes de começar.
+- **2026-11-12 — e-SAJ aceita navegador automatizado.** Sem login e sem bloqueio de robôs. Em teste assistido, o programa preencheu o pedido (modelo de falências, pessoa jurídica, razão social, CNPJ e e-mail) e o servidor marcou a confirmação e enviou; o reCAPTCHA aceitou o Chromium do Playwright e o TJSP registrou o pedido. A falência segue no modo automatizado, como o TST (spec 1.5).
+- **2026-11-12 — Certidão de falência baixada na hora.** A tela "Visualizar Certidão" do e-SAJ (número, data e CNPJ do pedido) não tem captcha. O pedido de teste já estava liberado, com "NADA CONSTAR". A pedido do servidor, o INC-08 passou a consultar logo após o pedido e a baixar o PDF quando liberado, e o e-mail passou a ficar salvo no computador (spec 1.6).

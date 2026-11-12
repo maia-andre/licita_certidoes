@@ -10,6 +10,8 @@ import webview
 from certidoes import empresa
 from certidoes.cnpj import CnpjInvalido, cnpj_da_matriz, formatar, normalizar
 from certidoes.empresa import ErroIdentificacao
+from certidoes.portais.esaj import email_valido
+from certidoes.preferencias import Preferencias
 from certidoes.sequencia import ITENS, Execucao
 
 TELA = pathlib.Path(__file__).parent / "ui" / "index.html"
@@ -31,11 +33,15 @@ AVISO_FILIAL = ("Você escolheu a filial. A certidão de falência deve seguir o
                 "(art. 69, II, da Lei 14.133/2021).")
 NAO_ATENDIDA = "Empresa com CNPJ de {uf}: não atendida nesta versão, que cobre apenas CNPJ de SP. Nenhum portal foi aberto."
 EM_ANDAMENTO = "Já existe uma consulta em andamento."
+EMAIL_INVALIDO = ("Informe um e-mail válido para o pedido de falência no e-SAJ: o TJSP envia para ele as "
+                  "instruções de emissão.")
 
 
 class Api:
-    def __init__(self, itens=ITENS, abrir=_abrir_arquivo, executar=_em_segundo_plano, consultar=empresa.consultar):
+    def __init__(self, itens=ITENS, abrir=_abrir_arquivo, executar=_em_segundo_plano, consultar=empresa.consultar,
+                 preferencias=None):
         self._itens = itens
+        self._preferencias = preferencias or Preferencias()
         self._abrir = abrir
         self._executar = executar
         self._consultar = consultar
@@ -71,8 +77,12 @@ class Api:
             self._opcoes = opcoes
         return resposta
 
-    def emitir(self, cnpj):
-        """Inicia a sequência para um CNPJ identificado e atendido (REQ-04). A tela acompanha por estado()."""
+    def emitir(self, cnpj, email=None):
+        """Inicia a sequência para um CNPJ identificado e atendido (REQ-04). A tela acompanha por estado().
+
+        O e-mail vai só para o pedido no e-SAJ (REQ-12) e fica salvo nas preferências deste computador.
+        """
+        precisa_email = any("email" in item.precisa for item in self._itens)
         with self._trava:
             escolhida = self._opcoes.get(cnpj) if isinstance(cnpj, str) else None
             if escolhida is None:
@@ -81,11 +91,20 @@ class Api:
                 return {"ok": False, "mensagem": NAO_ATENDIDA.format(uf=escolhida.uf)}
             if self._rodando:
                 return {"ok": False, "mensagem": EM_ANDAMENTO}
+            if precisa_email and not email_valido(email):
+                return {"ok": False, "mensagem": EMAIL_INVALIDO, "campo": "email"}
+            dados = {"razao_social": escolhida.razao_social, "email": email.strip() if precisa_email else None}
             self._rodando = True
-            self._execucao = Execucao(self._itens, cnpj)
+            self._execucao = Execucao(self._itens, cnpj, dados=dados)
             execucao = self._execucao
+        if precisa_email:
+            self._preferencias.salvar_email(dados["email"])
         self._em_fundo(execucao.rodar)
         return {"ok": True, "cnpj": formatar(cnpj), "aviso": None if escolhida.matriz else AVISO_FILIAL}
+
+    def email_salvo(self):
+        """E-mail do último pedido no e-SAJ feito neste computador, para a tela já abrir preenchida."""
+        return self._preferencias.email()
 
     def _em_fundo(self, funcao):
         """Roda `funcao` em segundo plano e libera nova consulta ao terminar (já com _rodando=True)."""
@@ -148,5 +167,5 @@ class Api:
 
 
 def iniciar():
-    webview.create_window("Certidões", html=TELA.read_text(encoding="utf-8"), js_api=Api(), width=980, height=600)
+    webview.create_window("Certidões", html=TELA.read_text(encoding="utf-8"), js_api=Api(), width=980, height=720)
     webview.start()

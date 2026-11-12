@@ -12,6 +12,7 @@ NEGATIVA = "Negativa"
 POSITIVA_EFEITO_NEGATIVA = "Positiva com efeitos de negativa"
 POSITIVA = "Positiva"
 REGULAR = "Regular"
+NADA_CONSTA = "Nada consta"
 
 _DATA = r"(\d{2}/\d{2}/\d{4})"
 _CNPJ_NO_TEXTO = re.compile(r"([0-9A-Z]{2})\.?([0-9A-Z]{3})\.?([0-9A-Z]{3})/[0-9A-Z]{4}-?\d{2}")
@@ -21,6 +22,7 @@ _CNPJ_NO_TEXTO = re.compile(r"([0-9A-Z]{2})\.?([0-9A-Z]{3})\.?([0-9A-Z]{3})/[0-9
 class Leitura:
     situacao: str = CONFERIR
     validade: dt.date | None = None  # None = "Conferir no PDF"
+    emissao: dt.date | None = None  # só em certidão que não imprime validade (falência no e-SAJ)
 
 
 def normalizar(texto: str) -> str:
@@ -86,6 +88,32 @@ def ler_crf(texto: str) -> Leitura:
         return Leitura()
     situacao = REGULAR if "ENCONTRA-SE EM SITUACAO REGULAR" in t else CONFERIR
     return Leitura(situacao, _data_unica(t, r"VALIDADE: \d{2}/\d{2}/\d{4} A " + _DATA))
+
+
+_MESES = ("JANEIRO", "FEVEREIRO", "MARCO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO",
+          "NOVEMBRO", "DEZEMBRO")
+_DATA_EXTENSO = re.compile(r"\b(\d{1,2}) DE (" + "|".join(_MESES) + r") DE (\d{4})\b")
+
+
+def _data_extenso_unica(texto: str) -> dt.date | None:
+    """A data por extenso ("12 DE NOVEMBRO DE 2026"), se houver uma única e válida; senão None."""
+    achadas = set(_DATA_EXTENSO.findall(texto))
+    if len(achadas) != 1:
+        return None
+    dia, mes, ano = achadas.pop()
+    try:
+        return dt.date(int(ano), _MESES.index(mes) + 1, int(dia))
+    except ValueError:
+        return None
+
+
+def ler_falencia(texto: str) -> Leitura:
+    """Certidão de distribuição de falências do e-SAJ: não imprime validade; lê só "nada consta" e a emissão."""
+    t = normalizar(texto)
+    if "CERTIDAO ESTADUAL DE DISTRIBUICOES CIVEIS" not in t or "PEDIDOS DE FALENCIA" not in t:
+        return Leitura()
+    situacao = NADA_CONSTA if "VERIFICOU NADA CONSTAR" in t else CONFERIR
+    return Leitura(situacao, None, _data_extenso_unica(t))
 
 
 def ler(leitor, texto: str, cnpj: str) -> Leitura:

@@ -1,4 +1,5 @@
 """Peças comuns aos portais: erro de portal e gravação do PDF na pasta do CNPJ."""
+import dataclasses
 import datetime as dt
 import pathlib
 import threading
@@ -16,6 +17,16 @@ class NaoEmitida(Exception):
 
 class Pulada(Exception):
     """O servidor pulou o item pela tela (REQ-07). Nunca indica irregularidade."""
+
+
+@dataclasses.dataclass(frozen=True)
+class Pedido:
+    """Pedido de certidão aceito pelo portal; a certidão chega depois (RN-02, "Pedido feito: acompanhar")."""
+    numero: str | None = None
+    data: str | None = None  # dd/mm/aaaa, como o portal mostra
+    email: str | None = None
+    prazo_dias: str | None = None
+    observacao: str | None = None  # p. ex. resultado da consulta feita logo após o pedido
 
 
 class SinalServidor:
