@@ -188,13 +188,14 @@ As notas de cada versão estão em [Releases](https://github.com/maia-andre/lici
 |---|---|---|
 | **v0.1.0** · Fluxo básico | 11/11/2026 | CND federal, CRF e CNDT em sequência; leitura de situação e validade; identificação pela BrasilAPI; pular e repetir |
 | **v0.2.0** · Certidões das minutas | 12/11/2026 | Falência no e-SAJ, sanções pelo TCU e apenados do TCE-SP |
-| **v1.0.0** · Validada *(planejada)* | — | Correções da validação com 10 CNPJs reais (improbidade no CNJ, CND de filial pela matriz, falência em janela nova), tela revisada e capa da consulta |
+| **v0.3.0** · Validada, com tela nova e capa | 12/11/2026 | Validação com 10 CNPJs reais e correções; improbidade no CNJ; CNPJ de qualquer UF; CND de filial pela matriz; tela revisada; subpasta por consulta e capa em PDF |
+| **v1.0.0** *(planejada)* | — | Instalação sem Python (executável para Windows) |
 
 | Marco | Incrementos | Situação |
 |---|---|---|
 | **1 · Fluxo básico** | INC-01 a INC-05 e INC-07 | Concluído em 11/11/2026 |
 | **2 · Certidões das minutas** | INC-08, INC-11 e INC-12 | Concluído em 12/11/2026 |
-| **3 · Validação e v1.0** | INC-10, INC-14 e INC-15 | Incrementos concluídos; falta a release |
+| **3 · Validação** | INC-10, INC-14 e INC-15 | Concluído em 12/11/2026 (release v0.3.0) |
 | **4 · Certidões com login** | INC-06 (SIDEB), INC-09 (eproc) e INC-13 (CND de SJC) | Adiado: gov.br e sistema municipal em implantação |
 
 <details>
