@@ -24,6 +24,8 @@ Em cada habilitação e a cada nota fiscal de contrato, o servidor reúne à mã
 
 O Certidões do Fornecedor cuida da parte repetitiva e deixa com o servidor o que é dele: **o captcha, o login e a decisão.** O servidor digita o CNPJ uma vez; o programa identifica a empresa, abre cada portal, guarda os PDFs numa pasta do CNPJ e mostra numa só tela a situação e a validade de cada certidão.
 
+![Tela do Certidões do Fornecedor ao fim de uma consulta, com a situação de cada certidão](docs/img/tela-concluida.png)
+
 ## Princípios
 
 - **Sem contornar captcha.** Quem resolve é o servidor, num navegador visível. O programa não usa serviços de terceiros para isso.
@@ -52,10 +54,12 @@ Em todas elas, o programa:
 
 - atende CNPJ de qualquer UF; a certidão cujo portal só atende SP (hoje, a falência pelo e-SAJ) fica "Não se aplica" fora de SP, com a indicação de onde obtê-la;
 - valida o CNPJ, numérico ou alfanumérico, antes de qualquer consulta externa, e identifica a empresa na BrasilAPI, com a escolha entre filial e matriz; para filial, pede a CND federal com o CNPJ da matriz, que a Receita exige, e o CRF com o da filial;
-- guarda o PDF em `Certidoes\<CNPJ>\` (no Windows, `C:\Users\<usuário>\Certidoes\`) e o abre pela tela;
+- guarda os PDFs numa subpasta por consulta, `Certidoes\<CNPJ>\<data e hora>\` (no Windows, dentro de `C:\Users\<usuário>\`), e abre cada PDF e a pasta pela tela;
 - lê do PDF a situação e a validade e avisa quando a certidão está vencida; na dúvida, mostra **"Conferir no PDF"** e nunca presume;
 - marca "Falha técnica" quando um portal falha e segue para a próxima certidão;
-- deixa o servidor pular a certidão em andamento e repetir só a que falhou.
+- destaca no cartão "Sua vez" o que o servidor precisa fazer no portal, com o botão para copiar o CNPJ de novo;
+- deixa o servidor pular a certidão em andamento e repetir só a que falhou;
+- gera, pelo botão **Gerar capa em PDF**, uma capa para instruir o processo, com a situação, a data e a hora de cada consulta e o código de integridade (SHA-256) de cada certidão.
 
 ## Como obtemos cada certidão
 
@@ -184,13 +188,13 @@ As notas de cada versão estão em [Releases](https://github.com/maia-andre/lici
 |---|---|---|
 | **v0.1.0** · Fluxo básico | 11/11/2026 | CND federal, CRF e CNDT em sequência; leitura de situação e validade; identificação pela BrasilAPI; pular e repetir |
 | **v0.2.0** · Certidões das minutas | 12/11/2026 | Falência no e-SAJ, sanções pelo TCU e apenados do TCE-SP |
-| **v1.0.0** · Validada *(planejada)* | — | Correções da validação com 10 CNPJs reais (improbidade no CNJ, CND de filial pela matriz, falência em janela nova) e tela revisada |
+| **v1.0.0** · Validada *(planejada)* | — | Correções da validação com 10 CNPJs reais (improbidade no CNJ, CND de filial pela matriz, falência em janela nova), tela revisada e capa da consulta |
 
 | Marco | Incrementos | Situação |
 |---|---|---|
 | **1 · Fluxo básico** | INC-01 a INC-05 e INC-07 | Concluído em 11/11/2026 |
 | **2 · Certidões das minutas** | INC-08, INC-11 e INC-12 | Concluído em 12/11/2026 |
-| **3 · Validação e v1.0** | INC-10 (concluído), INC-14 (concluído) e revisão da tela | Em andamento |
+| **3 · Validação e v1.0** | INC-10, INC-14 e INC-15 | Incrementos concluídos; falta a release |
 | **4 · Certidões com login** | INC-06 (SIDEB), INC-09 (eproc) e INC-13 (CND de SJC) | Adiado: gov.br e sistema municipal em implantação |
 
 <details>
@@ -212,6 +216,7 @@ As notas de cada versão estão em [Releases](https://github.com/maia-andre/lici
 | 12 | Apenados do TCE-SP | Certidão no navegador do servidor, com a situação lida | Concluído |
 | 13 | CND municipal de SJC | CND mobiliária para empresas com sede em SJC | Adiado: sistema em implantação |
 | 14 | Improbidade no CNJ | Certidão do CNIA por consulta direta | Concluído |
+| 15 | Tela revisada e capa | Cartão "Sua vez", etiquetas por situação, subpasta por consulta e capa em PDF | Concluído |
 
 </details>
 

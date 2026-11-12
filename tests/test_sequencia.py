@@ -59,7 +59,7 @@ def test_estado_inicial_e_aguardando():
     execucao = seq.Execucao([item("a", obtem("/a.pdf"))], CNPJ)
     assert execucao.itens() == [{"chave": "a", "nome": "A", "portal": "Portal a", "modo": "automatizado",
                                  "estado": "Aguardando", "mensagem": "", "arquivo": None,
-                                 "situacao": None, "validade": None, "vencida": False}]
+                                 "situacao": None, "validade": None, "vencida": False, "hora": None}]
 
 
 def nao_emite_ate_o_servidor_avisar(execucao_ref):
@@ -607,3 +607,37 @@ def test_matriz_pede_a_cnd_com_o_proprio_cnpj_sem_aviso():
     execucao.rodar()
     assert copiados == [("11222333000262", None)]
     assert execucao.itens()[0]["mensagem"] == ""
+
+
+def test_cada_item_final_recebe_a_hora_da_consulta():
+    horas = iter([dt.datetime(2026, 11, 12, 16, 35, 0), dt.datetime(2026, 11, 12, 16, 37, 5),
+                  dt.datetime(2026, 11, 12, 16, 37, 5)])
+    execucao = seq.Execucao([item("a", obtem("/a.pdf"))], CNPJ, relogio=lambda: next(horas, dt.datetime(2026, 11, 12, 16, 38)))
+    assert execucao.inicio == dt.datetime(2026, 11, 12, 16, 35, 0)
+    execucao.rodar()
+    assert execucao.itens()[0]["hora"] == "12/11/2026 16:37:05"
+
+
+def test_pdf_obtido_vai_para_a_subpasta_da_consulta(tmp_path):
+    origem = tmp_path / CNPJ / "cndt-20261112-163705.pdf"
+    origem.parent.mkdir()
+    origem.write_bytes(b"%PDF-teste")
+    pasta = tmp_path / CNPJ / "2026-11-12 16h35"
+    execucao = seq.Execucao([item("a", lambda cnpj, ao_aguardar, sinal: origem)], CNPJ, pasta_consulta=pasta)
+    execucao.rodar()
+    assert execucao.itens()[0]["arquivo"] == pasta / "cndt-20261112-163705.pdf"
+    assert (pasta / "cndt-20261112-163705.pdf").read_bytes() == b"%PDF-teste"
+    assert not origem.exists()
+
+
+def test_sem_subpasta_o_pdf_fica_onde_o_portal_guardou():
+    execucao = seq.Execucao([item("a", obtem("/tmp/a.pdf"))], CNPJ)
+    execucao.rodar()
+    assert execucao.itens()[0]["arquivo"] == pathlib.Path("/tmp/a.pdf")
+
+
+def test_cnpj_do_item_e_o_da_matriz_so_na_cnd_de_filial():
+    cnd = seq.Item("cnd", "CND", "Receita", obtem("/a.pdf"), "", precisa=("matriz",))
+    outro = item("crf", obtem("/b.pdf"))
+    execucao = seq.Execucao([cnd, outro], "11222333000262", dados={"matriz": CNPJ})
+    assert (execucao.cnpj_do_item("cnd"), execucao.cnpj_do_item("crf")) == (CNPJ, "11222333000262")

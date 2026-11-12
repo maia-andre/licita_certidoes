@@ -1,4 +1,5 @@
 """Tela em pywebview. Os métodos públicos de Api ficam expostos ao JavaScript da tela."""
+import datetime as dt
 import os
 import pathlib
 import subprocess
@@ -7,10 +8,12 @@ import threading
 
 import webview
 
-from certidoes import empresa
+from certidoes import capa, empresa
 from certidoes.cnpj import CnpjInvalido, cnpj_da_matriz, formatar, normalizar
 from certidoes.empresa import ErroIdentificacao
+from certidoes.portais.comum import PASTA_PADRAO
 from certidoes.portais.esaj import email_valido
+from certidoes.portais.navegador_servidor import copiar_para_area_de_transferencia
 from certidoes.preferencias import Preferencias
 from certidoes.sequencia import ITENS, Execucao, aplica
 
@@ -38,8 +41,15 @@ EMAIL_INVALIDO = ("Informe um e-mail válido para o pedido de falência no e-SAJ
 
 class Api:
     def __init__(self, itens=ITENS, abrir=_abrir_arquivo, executar=_em_segundo_plano, consultar=empresa.consultar,
-                 preferencias=None):
+                 preferencias=None, pasta_base=PASTA_PADRAO, copiar=copiar_para_area_de_transferencia,
+                 gerar_capa=capa.gerar_capa, relogio=dt.datetime.now):
         self._itens = itens
+        self._pasta_base = pathlib.Path(pasta_base)
+        self._copiar = copiar
+        self._gerar_capa = gerar_capa
+        self._relogio = relogio
+        self._identificado_em = {}  # CNPJ -> hora da consulta à BrasilAPI (vai para a capa)
+        self._escolhida = None
         self._preferencias = preferencias or Preferencias()
         self._abrir = abrir
         self._executar = executar
@@ -72,8 +82,10 @@ class Api:
                 resposta["matriz"] = matriz.para_tela()
             except ErroIdentificacao as erro:
                 resposta["erro_matriz"] = f"Matriz {formatar(cnpj_da_matriz(cnpj))}: {erro}"
+        agora = self._relogio()
         with self._trava:
             self._opcoes = opcoes
+            self._identificado_em = {numero: agora for numero in opcoes}
         return resposta
 
     def emitir(self, cnpj, email=None):
@@ -94,7 +106,9 @@ class Api:
             dados = {"razao_social": escolhida.razao_social, "email": email.strip() if precisa_email else None,
                      "matriz": None if escolhida.matriz else cnpj_da_matriz(cnpj)}
             self._rodando = True
-            self._execucao = Execucao(self._itens, cnpj, dados=dados, uf=escolhida.uf)
+            self._escolhida = escolhida
+            self._execucao = Execucao(self._itens, cnpj, dados=dados, uf=escolhida.uf,
+                                      pasta_consulta=self._pasta_da_consulta(cnpj), relogio=self._relogio)
             execucao = self._execucao
         if precisa_email:
             self._preferencias.salvar_email(dados["email"])
@@ -151,6 +165,57 @@ class Api:
         if execucao is None or not isinstance(mensagem, str):
             return False
         return execucao.informar_nao_emitida(chave, mensagem)
+
+    def _pasta_da_consulta(self, cnpj):
+        """Certidoes/<CNPJ>/<aaaa-mm-dd hhhmm>/: uma subpasta por consulta (REQ-08)."""
+        agora = self._relogio()
+        pasta = self._pasta_base / cnpj / f"{agora:%Y-%m-%d %Hh%M}"
+        if pasta.exists():
+            pasta = self._pasta_base / cnpj / f"{agora:%Y-%m-%d %Hh%Mm%S}"
+        return pasta
+
+    def copiar_cnpj(self, chave):
+        """Botão "Copiar o CNPJ de novo" do item que aguarda o servidor (o da matriz na CND de filial)."""
+        with self._trava:
+            execucao = self._execucao
+        if execucao is None or not isinstance(chave, str):
+            return False
+        return bool(self._copiar(execucao.cnpj_do_item(chave)))
+
+    def abrir_pasta(self):
+        """Botão "Abrir pasta": a subpasta da consulta, ou a pasta do CNPJ se nada foi salvo."""
+        with self._trava:
+            execucao = self._execucao
+        if execucao is None:
+            return False
+        for pasta in (execucao.pasta_consulta, self._pasta_base / execucao.cnpj):
+            if pasta is not None and pasta.is_dir():
+                try:
+                    self._abrir(pasta)
+                except OSError:
+                    return False
+                return True
+        return False
+
+    def gerar_capa(self):
+        """Botão "Gerar capa em PDF" (REQ-20): resumo da consulta na pasta da consulta, aberto em seguida."""
+        with self._trava:
+            execucao, rodando, escolhida = self._execucao, self._rodando, self._escolhida
+            identificado_em = self._identificado_em.get(escolhida.cnpj) if escolhida else None
+        if rodando:
+            return {"ok": False, "mensagem": EM_ANDAMENTO}
+        if execucao is None or escolhida is None:
+            return {"ok": False, "mensagem": "Faça uma consulta antes de gerar a capa."}
+        try:
+            destino = self._gerar_capa(escolhida.para_tela(), identificado_em or execucao.inicio, execucao.itens(),
+                                       execucao.inicio, execucao.pasta_consulta or self._pasta_base / escolhida.cnpj)
+        except capa.CapaErro as erro:
+            return {"ok": False, "mensagem": str(erro)}
+        try:
+            self._abrir(destino)
+        except OSError:
+            pass  # a capa está salva; o servidor abre pela pasta
+        return {"ok": True, "arquivo": str(destino)}
 
     def abrir_pdf(self, chave):
         with self._trava:

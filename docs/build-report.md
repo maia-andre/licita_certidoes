@@ -1,39 +1,46 @@
 # Build report — 2026-11-12
-Spec: docs/spec.md, versão 1.12
-Incremento: INC-10 — Validação com 10 CNPJs reais (com as correções que ela exigiu e o INC-14)
+Spec: docs/spec.md, versão 1.14
+Incremento: INC-15 — Tela revisada e capa da consulta
 Rodada: construção
-Testes: 268 passando / 268 total — `.venv\Scripts\python -m pytest -q` (Windows 11, Python 3.14.6); também no GitHub Actions
+Testes: 283 passando / 283 total — `.venv\Scripts\python -m pytest -q` (Windows 11, Python 3.14.6)
 
-## Correções feitas a partir da validação
-- **REQ-12 — Falência aberta em janela nova.**
-  - **O que acontecia:** no Chromium visível, o e-SAJ abre a certidão liberada numa janela nova, no visualizador de PDF, sem download. O programa só esperava download, consultava 3 vezes e deixava o item em "Pedido feito: acompanhar".
-  - **Correção:** `esaj._consultar_uma_vez` intercepta a resposta de `realizarDownload.do` (`context.route`), guarda os bytes do PDF e entrega a resposta à janela sem mudança. Depois fecha a janela que o portal abriu. O download continua aceito.
-  - **Teste:** `tests/test_esaj.py::test_certidao_aberta_em_janela_nova_com_pdf_inline_tambem_e_baixada`, com um portal falso que abre a certidão em janela nova.
-- **REQ-19 / RN-11 — Improbidade no CNJ (INC-14).**
-  - **Novo portal `certidoes/portais/cnj.py`, em consulta direta:**
-    1. verifica as condenações com a mesma chamada da página do CNJ (`verificaRequeridoPossuiCertidao`);
-    2. baixa a "Certidão Negativa" (`certidao.php?tipoCertidao=N`), ou a certidão com registros (`P`) quando há condenações.
+## Requisitos atendidos
+- **REQ-09 — Tela revisada** (`certidoes/ui/index.html`, reescrita a partir da proposta aprovada em capturas).
+  - Cada certidão tem uma etiqueta: o estado enquanto roda; a situação depois de obtida.
+  - Cores:
+    - verde para Negativa, Regular, Nada consta e Positiva com efeitos de negativa;
+    - vermelho para Positiva;
+    - âmbar para "Conferir no PDF", "Não emitida" e "Falha técnica";
+    - azul para "Consultando…" e "Aguardando você";
+    - cinza para "Na fila", "Pulada" e "Não se aplica".
+  - Mostra o progresso ("3 de 7 concluídas") e, no fim, um resumo por estado.
+  - Depois de "Emitir certidões", a empresa ocupa uma linha só.
+  - O caminho do arquivo saiu de cada linha. Mensagens longas ficam recolhidas.
+  - O campo de e-mail do e-SAJ só aparece quando o CNPJ ou a matriz é de SP.
+- **REQ-21 — Cartão "Sua vez".**
+  - Mostra a instrução do item que aguarda o servidor, com os botões "Copiar o CNPJ de novo", "Pular esta certidão" e "O portal não emitiu".
+  - `Api.copiar_cnpj` usa `Execucao.cnpj_do_item`, que devolve o CNPJ da matriz na CND de filial.
+- **REQ-08 — Subpasta por consulta.**
+  - `Api.emitir` cria a `Execucao` com `pasta_consulta = Certidoes/<CNPJ>/<aaaa-mm-dd hhhmm>`, com os segundos acrescentados se a pasta já existir.
+  - A `Execucao` move cada PDF obtido para essa subpasta. A subpasta só é criada quando há arquivo.
+  - `Api.abrir_pasta` abre a subpasta.
+- **REQ-20 — Capa em PDF** (`certidoes/capa.py`).
+  - **Conteúdo:**
+    - empresa, com a hora da consulta à BrasilAPI;
+    - período da consulta;
+    - tabela com situação, validade ou emissão, data e hora de cada item e nome do arquivo;
+    - aviso da RN-06;
+    - campos de responsável, matrícula e data;
+    - anexo com o SHA-256 de cada certidão e o comando `certutil` para conferir.
+  - **Como é gerada:** em HTML, impressa em A4 pelo Chromium do Playwright, sem dependência nova. O nome é `capa-<data-hora>.pdf`, na subpasta da consulta.
+  - **Botão:** `Api.gerar_capa` não roda durante a consulta e abre a capa depois de gerada.
+  - **Horários:** `Execucao` registra a hora em que cada item chega a um estado final.
+- `certidoes/__init__.py` traz `__version__ = "0.3.0"`, que aparece no rodapé da capa.
 
-    Resposta inesperada vira "Falha técnica".
-  - **Leitura `leitura.ler_improbidade_cnj`:** "Nada consta" só na "Certidão Negativa" que diz "NÃO CONSTA"; nos demais casos, "Conferir no PDF". Mostra a data de emissão.
-  - **Item 7:** `leitura.ler_sancoes_tcu` passa a decidir só por TCU, CEIS e CNEP. O resultado do CNJ fica na mensagem, apontando para o item 10. Um cadastro desconhecido ou repetido continua levando a "Conferir no PDF".
-  - **Testes:**
-    - `tests/test_cnj.py` (7);
-    - `tests/test_leitura.py::test_improbidade_*` (3, um sobre o texto real) e `::test_sancoes_*` (ajustados);
-    - `tests/test_sequencia.py::test_improbidade_*` e `::test_sancoes_*`.
-- **RN-07 — CND federal de filial pela matriz.**
-  - **Mudança:**
-    - o item da CND tem `precisa=("matriz",)`;
-    - para filial, `Execucao` passa o CNPJ da matriz a `receita.obter_cnd`, mostra-o na instrução e explica o motivo;
-    - o PDF fica na pasta da filial;
-    - a tela de escolha da filial avisa isso;
-    - o CRF continua com o CNPJ da filial.
-  - **Testes:**
-    - `tests/test_sequencia.py::test_filial_pede_a_cnd_com_o_cnpj_da_matriz_e_explica_na_tela`;
-    - `::test_matriz_pede_a_cnd_com_o_proprio_cnpj_sem_aviso`;
-    - `tests/test_navegador_servidor.py::test_filial_copia_o_cnpj_da_matriz_e_guarda_o_pdf_na_pasta_da_filial`;
-    - `tests/test_app.py::test_filial_escolhida_passa_o_cnpj_da_matriz_para_a_sequencia`.
+## Testes
+- `tests/test_capa.py` (5): conteúdo e escape do HTML, vencida, SHA-256 e pasta, arquivo ausente, PDF real com o anexo.
+- `tests/test_app.py`: subpasta com data e hora, copiar o CNPJ certo, abrir a pasta, gerar e abrir a capa, capa bloqueada durante a consulta, elementos da tela nova.
+- `tests/test_sequencia.py`: hora de cada item, PDF movido para a subpasta, PDF fora da subpasta sem pasta de consulta, CNPJ do item.
 
 ## Perguntas em aberto / pendências
-- Não foi vista uma certidão real do CNJ com condenações. O programa pede a certidão com registros e mostra "Conferir no PDF".
-- Uma certidão de falência de ente público fica "em processamento" no e-SAJ. O item fica corretamente em "Pedido feito: acompanhar", mas a mensagem do portal ("Certidão em processamento") ainda não aparece na tela.
+- Nenhuma. A consulta completa na janela real, do CNPJ à capa, foi feita pelo servidor em 12/11/2026.

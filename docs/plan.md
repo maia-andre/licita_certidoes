@@ -1,6 +1,6 @@
 # Plan: Obtenção assistida de certidões de fornecedores
-Spec: docs/spec.md, versão 1.13 | Gerado: 2026-11-06
-Progresso: 11/14 incrementos concluídos (3 adiados)
+Spec: docs/spec.md, versão 1.14 | Gerado: 2026-11-06
+Progresso: 12/15 incrementos concluídos (3 adiados)
 
 ## Backlog
 
@@ -82,6 +82,12 @@ Itens da spec: REQ-19
 Depende de: INC-11
 Entrega verificável: para um CNPJ real, a certidão do CNIA fica salva por consulta direta, sem ação do servidor, com "Nada consta" na tela; com condenações, o item mostra "Conferir no PDF".
 
+### INC-15 — Tela revisada e capa da consulta
+Status: concluído (2026-11-12)
+Itens da spec: REQ-20, REQ-21
+Depende de: INC-10
+Entrega verificável: na janela real, o item que aguarda o servidor aparece no cartão "Sua vez", cada certidão mostra a situação numa etiqueta colorida, os PDFs vão para a subpasta da consulta e o botão "Gerar capa em PDF" salva e abre a capa com a hora de cada consulta e o SHA-256 de cada certidão.
+
 ### INC-10 — Validação com 10 CNPJs reais
 Status: concluído (2026-11-12)
 Itens da spec: Definição de concluído
@@ -89,7 +95,7 @@ Depende de: INC-12 (INC-09 e INC-13 adiados)
 Entrega verificável: um relatório mostra o resultado de 10 CNPJs reais, nos itens ativos da RN-01 (1, 2, 3, 5, 7, 8 e 10), incluindo ao menos 1 filial e 1 CNPJ de outra UF, conferido com os PDFs.
 
 ## Cobertura
-Cada REQ, RNF, RN e CE da spec aparece em exatamente um incremento: REQ-01 a REQ-19, RNF-01 a RNF-06, RN-01 a RN-09 e RN-11, e CE-01 a CE-15. A RN-10 registra os adiamentos e a RN-12, o mapeamento colaborativo; nenhuma das duas tem incremento próprio.
+Cada REQ, RNF, RN e CE da spec aparece em exatamente um incremento: REQ-01 a REQ-21, RNF-01 a RNF-06, RN-01 a RN-09 e RN-11, e CE-01 a CE-15. A RN-10 registra os adiamentos e a RN-12, o mapeamento colaborativo; nenhuma das duas tem incremento próprio.
 
 O INC-02 antecipa o maior risco técnico (hCaptcha em navegador automatizado). Se a Receita ou a Caixa recusarem o navegador, o plano deve ser revisto antes de seguir.
 
@@ -108,6 +114,17 @@ O INC-02 antecipa o maior risco técnico (hCaptcha em navegador automatizado). S
 
   Novos incrementos: INC-11 (TCU), INC-12 (TCE-SP) e INC-13 (SJC, adiado). O INC-10 passa para depois deles.
 - **2026-11-12 — TCE-SP no navegador do servidor.** Reconhecimento só de leitura: o formulário "Gerar Certidão" abre direto pelo endereço; "Gerar" abre uma janela com o Turnstile, e "OK" gera a certidão na tela, com o link de PDF. Em duas tentativas assistidas no Chromium do Playwright, o Turnstile falhou com o erro 600010 (recusa de navegador automatizado). No navegador normal do servidor, o mesmo CNPJ gerou a certidão sem problema. Pela CE-15, o item 8 passou ao modo navegador do servidor (spec 1.9), sem tentar contornar. A certidão imprime "válido até" com a data da própria consulta, e o programa mostra essa data (RN-04).
+- **2026-11-12 — Tela revisada e capa da consulta (INC-15).** Proposta feita em capturas, com dados reais da validação, e aprovada pelo servidor:
+  - o cartão "Sua vez" destaca a ação pendente;
+  - uma etiqueta colorida por certidão substitui as colunas de estado e situação (verde também para "Positiva com efeitos de negativa", por decisão do servidor);
+  - progresso, resumo final e "Nova consulta".
+
+  O servidor pediu uma capa em PDF, com carimbo de hora, para instruir o processo. Decisões dele:
+  - uma subpasta por consulta;
+  - anexo com o SHA-256 de cada certidão;
+  - capa gerada só pelo botão, depois das repetições.
+
+  A capa é impressa pelo Chromium do Playwright, sem dependência nova.
 - **2026-11-12 — TCE-SP com data de emissão.** O "válido até" da certidão de apenados é o próprio momento da consulta, e a tela marcava "Vencida" no dia seguinte. Decisão do servidor: mostrar "Não impressa (emitida em dd/mm/aaaa)", como nas outras consultas de momento (spec 1.13).
 - **2026-11-12 — Validação com 10 CNPJs reais (INC-10).** Na janela real do programa, com 10 CNPJs (2 filiais, 1 de outra UF, 2 entes públicos), nenhum item mostrou situação ou validade diferente do PDF. A validação achou três problemas, corrigidos na spec 1.12:
   - o e-SAJ abre a certidão de falência liberada numa janela nova, no visualizador de PDF do Chromium, e o programa só esperava download; agora a resposta é interceptada, e 7 certidões saíram sozinhas;

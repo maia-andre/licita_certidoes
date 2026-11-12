@@ -2,6 +2,7 @@
 import dataclasses
 import datetime as dt
 import pathlib
+import shutil
 import threading
 from typing import Callable
 
@@ -21,6 +22,8 @@ FALHA = "Falha técnica"
 PEDIDO_FEITO = "Pedido feito: acompanhar"
 NAO_SE_APLICA = "Não se aplica"  # portal de outra UF (REQ-04); nunca indica irregularidade
 REPETIVEIS = (FALHA, NAO_EMITIDA, PULADA)  # REQ-14
+FINAIS = (OBTIDA, NAO_EMITIDA, PULADA, FALHA, PEDIDO_FEITO)  # recebem a hora da consulta (REQ-20)
+FORMATO_HORA = "%d/%m/%Y %H:%M:%S"
 
 # Modos de acesso (RN-09)
 AUTOMATIZADO = "automatizado"
@@ -99,8 +102,13 @@ def _mensagem_nao_emitida(texto: str) -> str:
 class Execucao:
     """Percorre os itens para um CNPJ. Uma falha em um item não interrompe os demais (CE-05)."""
 
-    def __init__(self, itens, cnpj, hoje=dt.date.today, dados=None, uf=None):
+    def __init__(self, itens, cnpj, hoje=dt.date.today, dados=None, uf=None, pasta_consulta=None,
+                 relogio=dt.datetime.now):
+        """`pasta_consulta`: subpasta desta consulta (REQ-08); cada PDF obtido é movido para ela."""
         self._itens = tuple(itens)
+        self._pasta_consulta = pathlib.Path(pasta_consulta) if pasta_consulta else None
+        self._relogio = relogio
+        self.inicio = relogio()
         self._uf = uf  # UF do CNPJ escolhido (REQ-04)
         self._dados = dict(dados or {})  # razão social, e-mail etc.; só em memória
         self._por_chave = {item.chave: item for item in self._itens}
@@ -117,11 +125,40 @@ class Execucao:
     def _estado_inicial(item):
         return {"chave": item.chave, "nome": item.nome, "portal": item.portal, "modo": item.modo,
                 "estado": AGUARDANDO, "mensagem": "", "arquivo": None,
-                "situacao": None, "validade": None, "vencida": False}
+                "situacao": None, "validade": None, "vencida": False, "hora": None}
 
     def _marcar(self, chave, estado, mensagem="", arquivo=None):
+        hora = self._relogio().strftime(FORMATO_HORA) if estado in FINAIS else None
         with self._trava:
-            self._estado[chave].update(estado=estado, mensagem=mensagem, arquivo=arquivo)
+            self._estado[chave].update(estado=estado, mensagem=mensagem, arquivo=arquivo, hora=hora)
+
+    @property
+    def cnpj(self):
+        return self._cnpj
+
+    @property
+    def pasta_consulta(self):
+        return self._pasta_consulta
+
+    def cnpj_do_item(self, chave):
+        """CNPJ que o portal do item recebe: o da matriz na CND federal de filial (RN-07)."""
+        item = self._por_chave.get(chave)
+        if item is not None and "matriz" in item.precisa and self._dados.get("matriz"):
+            return self._dados["matriz"]
+        return self._cnpj
+
+    def _para_pasta_da_consulta(self, arquivo):
+        """Move o PDF para a subpasta desta consulta; se não der, o arquivo fica onde o portal o guardou."""
+        origem = pathlib.Path(arquivo)
+        if self._pasta_consulta is None or not origem.is_file():
+            return origem
+        try:
+            self._pasta_consulta.mkdir(parents=True, exist_ok=True)
+            destino = self._pasta_consulta / origem.name
+            shutil.move(origem, destino)
+            return destino
+        except OSError:
+            return origem
 
     def rodar(self):
         for item in self._itens:
@@ -171,6 +208,7 @@ class Execucao:
             if isinstance(resultado, Pedido):
                 self._marcar(item.chave, PEDIDO_FEITO, _mensagem_pedido(resultado))
             else:
+                resultado = self._para_pasta_da_consulta(resultado)
                 self._marcar(item.chave, OBTIDA, aviso_matriz, resultado)
                 self._registrar_leitura(item, resultado)
         finally:

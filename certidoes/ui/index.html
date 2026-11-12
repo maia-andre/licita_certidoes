@@ -4,177 +4,294 @@
 <meta charset="utf-8">
 <title>Certidões do Fornecedor</title>
 <style>
-  body { font: 16px system-ui, sans-serif; margin: 32px; color: #1b1b1b; background: #fff; }
-  h1 { font-size: 22px; margin: 0 0 20px; }
+  :root {
+    --fundo: #f4f5f7; --cartao: #fff; --texto: #1b1f24; --suave: #5b6470; --linha: #dfe3e8;
+    --azul: #0b4f8a; --azul-claro: #e6f0fa;
+    --verde: #17663a; --verde-claro: #e5f4ea;
+    --vermelho: #a3001b; --vermelho-claro: #fde8eb;
+    --ambar: #7a4a00; --ambar-claro: #fff1d6;
+    --cinza: #4a525c; --cinza-claro: #eceef1;
+  }
+  * { box-sizing: border-box; }
+  body { font: 15px/1.45 system-ui, "Segoe UI", sans-serif; margin: 0; color: var(--texto); background: var(--fundo); }
+  main { max-width: 1040px; margin: 0 auto; padding: 24px 24px 16px; }
+  h1 { font-size: 21px; margin: 0; }
+  .subtitulo { margin: 2px 0 18px; color: var(--suave); }
+  .cartao { background: var(--cartao); border: 1px solid var(--linha); border-radius: 8px; padding: 16px 18px; margin-bottom: 14px; }
   label { display: block; font-weight: 600; margin-bottom: 6px; }
-  input { font: inherit; padding: 8px; width: 100%; box-sizing: border-box; }
-  button { font: inherit; padding: 8px 16px; margin-top: 12px; cursor: pointer; }
-  #status { margin-top: 20px; min-height: 24px; overflow-wrap: anywhere; }
-  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-  th, td { text-align: left; vertical-align: top; padding: 8px; border-bottom: 1px solid #ddd; }
-  td.detalhe { overflow-wrap: anywhere; font-size: 14px; }
-  td.detalhe button { margin-top: 6px; padding: 4px 12px; }
-  .erro { color: #b00020; }
-  .Obtida { color: #1b6e1b; font-weight: 600; }
-  .pedido { color: #0b4f8a; font-weight: 600; }
-  .neutro { color: #555; }
-  .alerta { color: #8a4b00; font-weight: 600; }
-  .rodape { margin-top: 8px; color: #666; font-size: 12px; }
-  .aviso { margin-top: 24px; padding: 10px 12px; background: #f3f3f3; border-left: 4px solid #777; font-size: 14px; }
-  .nao-emitida { margin-top: 10px; }
-  .nao-emitida label { font-weight: 400; font-size: 13px; margin-bottom: 4px; }
-  .nao-emitida textarea { font: inherit; font-size: 14px; width: 100%; box-sizing: border-box; padding: 6px; }
-  .nao-emitida button { margin-top: 6px; }
-  .empresa { margin-top: 20px; padding: 12px 16px; border: 1px solid #ccc; border-radius: 4px; }
-  .empresa dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0; }
-  .empresa dt { font-weight: 600; }
-  .empresa dd { margin: 0; }
-  #escolhas button { margin-right: 8px; }
+  input, textarea { font: inherit; padding: 8px 10px; border: 1px solid #b9c0c8; border-radius: 6px; width: 100%; }
+  input:focus, textarea:focus, button:focus-visible { outline: 2px solid var(--azul); outline-offset: 1px; }
+  input[aria-invalid="true"] { outline: 2px solid var(--vermelho); }
+  button { font: inherit; padding: 7px 14px; border-radius: 6px; border: 1px solid #b9c0c8; background: #fff; cursor: pointer; }
+  button:hover:not(:disabled) { background: var(--cinza-claro); }
+  button:disabled { opacity: .55; cursor: default; }
+  button.principal { background: var(--azul); border-color: var(--azul); color: #fff; font-weight: 600; }
+  button.principal:hover:not(:disabled) { background: #093f6e; }
+  button.discreto { border: none; background: none; color: var(--azul); padding: 4px 6px; text-decoration: underline; }
+  .linha-busca { display: flex; gap: 10px; align-items: flex-end; }
+  .linha-busca > div { flex: 1; }
+  #status { margin: 0 0 12px; overflow-wrap: anywhere; color: var(--suave); }
+  #status:empty { display: none; }
+  .erro { color: var(--vermelho); }
+  /* Empresa */
+  .razao { font-size: 18px; font-weight: 700; margin: 0 0 6px; }
+  .fichas { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--suave); margin: 0 0 4px; }
+  .fichas b { color: var(--texto); font-weight: 600; }
+  .fichas .atencao { color: var(--vermelho); font-weight: 700; }
+  #aviso-empresa:not(:empty) { margin: 10px 0 0; padding: 8px 10px; border-radius: 6px; background: var(--ambar-claro); color: var(--ambar); }
   .campo-email { margin-top: 14px; }
-  .campo-email small { display: block; margin-top: 4px; font-size: 13px; color: #555; }
-  input[aria-invalid="true"] { outline: 2px solid #b00020; }
-  [hidden] { display: none; }
+  .campo-email small { display: block; margin-top: 4px; font-size: 13px; color: var(--suave); }
+  #escolhas { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .empresa.compacta { display: flex; align-items: center; gap: 12px; padding: 10px 18px; }
+  .empresa.compacta .razao { font-size: 15px; margin: 0; }
+  .empresa.compacta .fichas { margin: 0; }
+  .empresa.compacta #nova { margin-left: auto; }
+  .empresa.compacta .campo-email, .empresa.compacta #escolhas, .empresa.compacta #aviso-empresa { display: none; }
+  #aviso-filial { margin: 0 0 14px; padding: 8px 12px; border-radius: 6px; background: var(--ambar-claro); color: var(--ambar); }
+  /* Sua vez */
+  .vez { border: 2px solid var(--azul); background: var(--azul-claro); }
+  .vez h2 { font-size: 13px; letter-spacing: .04em; text-transform: uppercase; color: var(--azul); margin: 0 0 4px; }
+  .vez .qual { font-size: 17px; font-weight: 700; margin: 0 0 6px; }
+  .vez .instrucao { font-size: 16px; margin: 0 0 12px; }
+  .vez .acoes { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .nao-emitida { margin-top: 12px; padding-top: 12px; border-top: 1px solid #c6d7ea; }
+  .nao-emitida label { font-weight: 400; font-size: 13px; color: var(--suave); }
+  .nao-emitida textarea { font-size: 14px; }
+  .nao-emitida button { margin-top: 6px; }
+  /* Progresso */
+  .progresso { display: flex; align-items: center; gap: 12px; margin: 0 0 8px; color: var(--suave); font-size: 14px; }
+  .barra { flex: 1; height: 6px; background: var(--cinza-claro); border-radius: 3px; overflow: hidden; }
+  .barra > span { display: block; height: 100%; background: var(--azul); width: 0; transition: width .4s; }
+  /* Lista */
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--suave); font-weight: 600; padding: 0 10px 8px; }
+  td { text-align: left; vertical-align: top; padding: 11px 10px; border-top: 1px solid var(--linha); }
+  tr.ativa td { background: var(--azul-claro); }
+  .nome { font-weight: 600; }
+  .portal { font-size: 13px; color: var(--suave); }
+  .mensagem { font-size: 13px; color: var(--cinza); margin-top: 4px; overflow-wrap: anywhere; }
+  .mensagem summary { cursor: pointer; color: var(--azul); }
+  .etiqueta { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .e-verde { background: var(--verde-claro); color: var(--verde); }
+  .e-vermelho { background: var(--vermelho-claro); color: var(--vermelho); }
+  .e-ambar { background: var(--ambar-claro); color: var(--ambar); }
+  .e-azul { background: var(--azul-claro); color: var(--azul); }
+  .e-vez { background: var(--azul); color: #fff; }
+  .e-cinza { background: var(--cinza-claro); color: var(--cinza); }
+  .validade small { display: block; font-size: 12px; color: var(--suave); }
+  .validade .vencida { color: var(--ambar); font-weight: 700; }
+  td.acoes { white-space: nowrap; text-align: right; }
+  /* Resumo */
+  .resumo { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--linha); }
+  .resumo .contagem { flex: 1; color: var(--suave); }
+  .aviso { margin: 16px 0 6px; padding: 10px 12px; background: var(--cartao); border-left: 4px solid var(--cinza); border-radius: 4px; font-size: 14px; }
+  .rodape { color: var(--suave); font-size: 12px; margin: 0; }
+  [hidden] { display: none !important; }
 </style>
 </head>
 <body>
+<main>
   <h1>Certidões do Fornecedor</h1>
-  <form id="formulario">
-    <label for="cnpj">CNPJ da empresa</label>
-    <input id="cnpj" autocomplete="off" autofocus>
-    <button id="identificar" type="submit">Identificar empresa</button>
+  <p class="subtitulo">Digite o CNPJ, resolva só o captcha e tenha as certidões do fornecedor em mãos.</p>
+
+  <form id="formulario" class="cartao">
+    <div class="linha-busca">
+      <div>
+        <label for="cnpj">CNPJ da empresa</label>
+        <input id="cnpj" autocomplete="off" autofocus placeholder="00.000.000/0000-00">
+      </div>
+      <button id="identificar" class="principal" type="submit">Identificar empresa</button>
+    </div>
   </form>
-  <section id="empresa" class="empresa" hidden>
-    <div id="dados-empresa"></div>
+
+  <p id="status" role="status"></p>
+
+  <section id="empresa" class="cartao empresa" hidden>
+    <div>
+      <p class="razao" id="razao"></p>
+      <p class="fichas" id="fichas"></p>
+    </div>
     <p id="aviso-empresa"></p>
-    <div class="campo-email">
+    <div class="campo-email" id="campo-email">
       <label for="email">E-mail para o pedido de falência no e-SAJ</label>
       <input id="email" type="email" autocomplete="email">
-      <small>O TJSP envia para este e-mail as instruções para emitir a certidão. O e-mail fica salvo neste computador para as próximas consultas.</small>
+      <small>O TJSP envia para este e-mail as instruções para emitir a certidão. O e-mail fica salvo neste computador.</small>
     </div>
     <div id="escolhas"></div>
+    <button id="nova" class="discreto" type="button" hidden>Nova consulta</button>
   </section>
-  <p id="status" role="status"></p>
-  <p id="aviso-filial" class="alerta" hidden></p>
-  <table id="itens" hidden>
-    <thead><tr><th>Certidão</th><th>Portal</th><th>Estado</th><th>Situação</th><th>Validade</th><th>Detalhes</th></tr></thead>
-    <tbody></tbody>
-  </table>
+
+  <p id="aviso-filial" hidden></p>
+
+  <section id="vez" class="cartao vez" hidden aria-live="polite">
+    <h2>Sua vez</h2>
+    <p class="qual" id="vez-qual"></p>
+    <p class="instrucao" id="vez-instrucao"></p>
+    <div class="acoes">
+      <button id="vez-copiar" class="principal" type="button">Copiar o CNPJ de novo</button>
+      <button id="vez-pular" type="button">Pular esta certidão</button>
+    </div>
+    <div class="nao-emitida" id="vez-nao-emitida">
+      <label for="vez-mensagem">Mensagem do portal (opcional)</label>
+      <textarea id="vez-mensagem" rows="2" maxlength="1000"></textarea>
+      <button id="vez-informar" type="button">O portal não emitiu</button>
+    </div>
+  </section>
+
+  <section id="lista" class="cartao" hidden>
+    <div class="progresso" id="progresso"><span id="progresso-texto"></span><div class="barra"><span id="progresso-barra"></span></div></div>
+    <table id="itens">
+      <thead><tr><th>Certidão</th><th>Situação</th><th>Validade</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="resumo" id="resumo" hidden>
+      <span class="contagem" id="contagem"></span>
+      <button id="capa" class="principal" type="button">Gerar capa em PDF</button>
+      <button id="pasta" type="button">Abrir pasta</button>
+      <button id="nova-fim" type="button">Nova consulta</button>
+    </div>
+  </section>
+
   <p id="aviso" class="aviso">Este programa só reúne informações dos portais. A análise dos documentos e a decisão cabem ao servidor. Sempre confira o PDF.</p>
   <p class="rodape">Certidões do Fornecedor · software livre sob a licença AGPL 3.0 · código em github.com/maia-andre/licita_certidoes</p>
+</main>
 <script>
-  const status = document.getElementById('status');
-  const identificar = document.getElementById('identificar');
-  const cartao = document.getElementById('empresa');
-  const dadosEmpresa = document.getElementById('dados-empresa');
-  const avisoEmpresa = document.getElementById('aviso-empresa');
-  const escolhas = document.getElementById('escolhas');
-  const email = document.getElementById('email');
-  const avisoFilial = document.getElementById('aviso-filial');
-  const tabela = document.getElementById('itens');
-  const corpo = tabela.querySelector('tbody');
+  const $ = (id) => document.getElementById(id);
+  const status = $('status'), identificar = $('identificar'), cartao = $('empresa'), email = $('email');
+  const escolhas = $('escolhas'), avisoEmpresa = $('aviso-empresa'), avisoFilial = $('aviso-filial');
+  const lista = $('lista'), corpo = $('itens').querySelector('tbody'), resumo = $('resumo');
   const linhas = new Map();
+  let chaveDaVez = null;
+
+  const EM_CURSO = ['Em andamento', 'Aguardando servidor'];
+  const REPETIVEIS = ['Falha técnica', 'Não emitida', 'Pulada'];
+  const FINAIS = ['Obtida', 'Não emitida', 'Falha técnica', 'Pulada', 'Pedido feito: acompanhar', 'Não se aplica'];
+  // Cor só pela natureza do documento, sem juízo de habilitação (RN-06).
+  const COR_SITUACAO = {'Negativa': 'verde', 'Regular': 'verde', 'Nada consta': 'verde',
+                        'Positiva com efeitos de negativa': 'verde', 'Positiva': 'vermelho', 'Conferir no PDF': 'ambar'};
+  const ROTULO_ESTADO = {'Aguardando': ['Na fila', 'cinza'], 'Em andamento': ['Consultando…', 'azul'],
+                         'Aguardando servidor': ['Aguardando você', 'vez'], 'Não emitida': ['Não emitida', 'ambar'],
+                         'Falha técnica': ['Falha técnica', 'ambar'], 'Pulada': ['Pulada', 'cinza'],
+                         'Pedido feito: acompanhar': ['Pedido feito: acompanhar', 'azul'],
+                         'Não se aplica': ['Não se aplica', 'cinza']};
 
   function mostrar(texto, erro) {
     status.textContent = texto;
     status.className = erro ? 'erro' : '';
   }
 
-  function celula(linha, classe) {
-    const td = document.createElement('td');
-    if (classe) td.className = classe;
-    linha.appendChild(td);
-    return td;
+  function etiqueta(texto, cor) {
+    const s = document.createElement('span');
+    s.className = 'etiqueta e-' + cor;
+    s.textContent = texto;
+    return s;
   }
 
   function criarLinha(item) {
     const tr = document.createElement('tr');
-    celula(tr).textContent = item.nome;
-    celula(tr).textContent = item.portal;
-    const estado = celula(tr);
-    const situacao = celula(tr);
-    const validade = celula(tr);
-    const detalhe = celula(tr, 'detalhe');
-    const mensagem = document.createElement('div');
+    const tdNome = document.createElement('td');
+    const nome = document.createElement('div'); nome.className = 'nome'; nome.textContent = item.nome;
+    const portal = document.createElement('div'); portal.className = 'portal'; portal.textContent = item.portal;
+    const mensagem = document.createElement('div'); mensagem.className = 'mensagem';
+    tdNome.append(nome, portal, mensagem);
+    const situacao = document.createElement('td');
+    const validade = document.createElement('td'); validade.className = 'validade';
+    const acoes = document.createElement('td'); acoes.className = 'acoes';
     const abrir = document.createElement('button');
-    abrir.type = 'button';
-    abrir.textContent = 'Abrir PDF';
-    abrir.hidden = true;
+    abrir.type = 'button'; abrir.textContent = 'Abrir PDF'; abrir.hidden = true;
     abrir.addEventListener('click', () => window.pywebview.api.abrir_pdf(item.chave));
-
-    const naoEmitida = document.createElement('div');
-    naoEmitida.className = 'nao-emitida';
-    naoEmitida.hidden = true;
-    const rotulo = document.createElement('label');
-    rotulo.textContent = 'Mensagem do portal (opcional)';
-    rotulo.htmlFor = 'msg-' + item.chave;
-    const campo = document.createElement('textarea');
-    campo.id = 'msg-' + item.chave;
-    campo.rows = 2;
-    campo.maxLength = 1000;
-    const informar = document.createElement('button');
-    informar.type = 'button';
-    informar.textContent = 'O portal não emitiu';
-    informar.addEventListener('click', async () => {
-      informar.disabled = true;
-      const ok = await window.pywebview.api.informar_nao_emitida(item.chave, campo.value);
-      if (!ok) informar.disabled = false;
-    });
-    naoEmitida.append(rotulo, campo, informar);
-
-    const pular = document.createElement('button');
-    pular.type = 'button';
-    pular.textContent = 'Pular';
-    pular.hidden = true;
-    pular.addEventListener('click', async () => {
-      pular.disabled = true;
-      if (!await window.pywebview.api.pular(item.chave)) pular.disabled = false;
-    });
-
     const repetir = document.createElement('button');
-    repetir.type = 'button';
-    repetir.textContent = 'Repetir';
-    repetir.hidden = true;
+    repetir.type = 'button'; repetir.textContent = 'Repetir'; repetir.hidden = true;
     repetir.addEventListener('click', async () => {
       const r = await window.pywebview.api.repetir(item.chave);
-      if (!r.ok) {
-        mostrar(r.mensagem, true);
-        return;
-      }
+      if (!r.ok) { mostrar(r.mensagem, true); return; }
       travar(true);
-      mostrar('Repetindo: ' + item.nome + '...');
+      mostrar('Repetindo: ' + item.nome + '…');
       acompanhar();
     });
-
-    detalhe.append(mensagem, abrir, naoEmitida, pular, repetir);
+    acoes.append(abrir, repetir);
+    tr.append(tdNome, situacao, validade, acoes);
     corpo.appendChild(tr);
-    return { estado, situacao, validade, mensagem, abrir, naoEmitida, informar, pular, repetir };
+    return { tr, mensagem, situacao, validade, abrir, repetir };
   }
 
-  const EM_CURSO = ['Em andamento', 'Aguardando servidor'];
-  const REPETIVEIS = ['Falha técnica', 'Não emitida', 'Pulada'];
+  function preencherMensagem(caixa, texto) {
+    caixa.replaceChildren();
+    if (!texto) return;
+    if (texto.length <= 160) { caixa.textContent = texto; return; }
+    const det = document.createElement('details');
+    const sum = document.createElement('summary');
+    sum.textContent = texto.slice(0, 110).replace(/\s+\S*$/, '') + '… ver tudo';
+    const corpoTexto = document.createElement('div');
+    corpoTexto.textContent = texto;
+    det.append(sum, corpoTexto);
+    caixa.appendChild(det);
+  }
+
+  function preencherValidade(td, item) {
+    td.replaceChildren();
+    if (!item.validade) return;
+    const emitida = /^Não impressa \(emitida em (.+)\)$/.exec(item.validade);
+    if (emitida) {
+      td.append(document.createTextNode('Emitida em ' + emitida[1]));
+      const s = document.createElement('small'); s.textContent = 'vale para o momento da consulta'; td.append(s);
+    } else if (item.vencida) {
+      const v = document.createElement('span'); v.className = 'vencida'; v.textContent = item.validade + ' · Vencida';
+      td.append(v);
+    } else {
+      td.textContent = item.validade;
+    }
+  }
+
+  function desenharVez(item) {
+    const vez = $('vez');
+    if (!item) { vez.hidden = true; chaveDaVez = null; return; }
+    const nova = chaveDaVez !== item.chave;
+    chaveDaVez = item.chave;
+    $('vez-qual').textContent = item.nome + ' · ' + item.portal;
+    $('vez-instrucao').textContent = item.mensagem;
+    const noNavegador = item.modo === 'navegador';
+    $('vez-copiar').hidden = !noNavegador;
+    $('vez-nao-emitida').hidden = !noNavegador;
+    if (nova) {
+      $('vez-pular').disabled = false; $('vez-informar').disabled = false; $('vez-mensagem').value = '';
+    }
+    vez.hidden = false;
+  }
 
   function desenhar(itens, rodando) {
+    let concluidos = 0, daVez = null;
+    const contagem = {};
     for (const item of itens) {
       if (!linhas.has(item.chave)) linhas.set(item.chave, criarLinha(item));
       const l = linhas.get(item.chave);
-      l.estado.textContent = item.estado;
-      l.estado.className = {'Obtida': 'Obtida', 'Falha técnica': 'erro', 'Não emitida': 'alerta',
-                            'Pedido feito: acompanhar': 'pedido', 'Não se aplica': 'neutro'}[item.estado] || '';
-      l.situacao.textContent = item.situacao || '';
-      l.situacao.className = item.situacao === 'Conferir no PDF' ? 'alerta' : '';
-      l.validade.textContent = item.validade ? item.validade + (item.vencida ? ' (Vencida)' : '') : '';
-      l.validade.className = item.vencida ? 'erro' : (item.validade === 'Conferir no PDF' ? 'alerta' : '');
-      l.mensagem.textContent = [item.mensagem, item.arquivo ? 'Salva em: ' + item.arquivo : '']
-        .filter(Boolean).join(' ');
+      const final = FINAIS.includes(item.estado);
+      if (final) concluidos++;
+      if (item.estado === 'Aguardando servidor' && rodando) daVez = item;
+      l.tr.className = item.estado === 'Aguardando servidor' ? 'ativa' : '';
+      l.situacao.replaceChildren(item.estado === 'Obtida'
+        ? etiqueta(item.situacao || 'Conferir no PDF', COR_SITUACAO[item.situacao] || 'ambar')
+        : etiqueta(...(ROTULO_ESTADO[item.estado] || [item.estado, 'cinza'])));
+      preencherValidade(l.validade, item);
+      preencherMensagem(l.mensagem, item.estado === 'Aguardando servidor' ? 'Siga as instruções acima.' : item.mensagem);
       l.abrir.hidden = !item.arquivo;
-      l.naoEmitida.hidden = !(item.modo === 'navegador' && item.estado === 'Aguardando servidor');
-      const emCurso = rodando && EM_CURSO.includes(item.estado);
-      if (l.pular.hidden && emCurso) l.pular.disabled = false;
-      l.pular.hidden = !emCurso;
       l.repetir.hidden = rodando || !REPETIVEIS.includes(item.estado);
-      if (!emCurso && item.estado !== 'Aguardando servidor') l.informar.disabled = false;
+      const grupo = item.estado === 'Obtida' ? 'obtida' : item.estado.toLowerCase();
+      if (final) contagem[grupo] = (contagem[grupo] || 0) + 1;
     }
-    tabela.hidden = itens.length === 0;
+    desenharVez(daVez);
+    $('progresso-texto').textContent = rodando ? `Consultando… ${concluidos} de ${itens.length} concluídas`
+                                               : `${concluidos} de ${itens.length} concluídas`;
+    $('progresso-barra').style.width = (itens.length ? 100 * concluidos / itens.length : 0) + '%';
+    const partes = [];
+    if (contagem['obtida']) partes.push(contagem['obtida'] + (contagem['obtida'] > 1 ? ' obtidas' : ' obtida'));
+    for (const [g, rot] of [['pedido feito: acompanhar', 'pedido a acompanhar'], ['não emitida', 'não emitida'],
+                            ['falha técnica', 'com falha técnica'], ['pulada', 'pulada'], ['não se aplica', 'não se aplica']]) {
+      if (contagem[g]) partes.push(contagem[g] + ' ' + rot);
+    }
+    $('contagem').textContent = partes.join(' · ');
+    resumo.hidden = rodando || itens.length === 0;
+    lista.hidden = itens.length === 0;
   }
 
   function travar(sim) {
@@ -182,66 +299,68 @@
     email.disabled = sim;
     for (const l of linhas.values()) l.repetir.disabled = sim;
     for (const b of escolhas.querySelectorAll('button')) b.disabled = sim;
+    for (const id of ['capa', 'pasta', 'nova-fim', 'nova']) $(id).disabled = sim;
   }
 
   async function acompanhar() {
     try {
       const r = await window.pywebview.api.estado();
       desenhar(r.itens, r.rodando);
-      if (r.rodando) {
-        setTimeout(acompanhar, 700);
-        return;
-      }
-      mostrar('Consulta concluída.');
+      if (r.rodando) { setTimeout(acompanhar, 700); return; }
+      mostrar('');
     } catch (erro) {
       mostrar('Erro inesperado: ' + erro, true);
     }
     travar(false);
   }
 
-  function linhaDado(dl, rotulo, valor, classe) {
-    const dt = document.createElement('dt');
-    dt.textContent = rotulo;
-    const dd = document.createElement('dd');
-    dd.textContent = valor;
-    if (classe) dd.className = classe;
-    dl.append(dt, dd);
+  function ficha(rotulo, valor, classe) {
+    const s = document.createElement('span');
+    const b = document.createElement('b'); b.textContent = valor;
+    if (classe) b.className = classe;
+    s.append(rotulo + ' ', b);
+    return s;
   }
 
-  function botaoEscolha(rotulo, emp) {
+  function botaoEscolha(rotulo, emp, principal) {
     const b = document.createElement('button');
-    b.type = 'button';
-    b.textContent = rotulo;
+    b.type = 'button'; b.textContent = rotulo;
+    if (principal) b.className = 'principal';
     b.addEventListener('click', () => iniciar(emp.cnpj));
     escolhas.appendChild(b);
   }
 
   function mostrarEmpresa(r) {
     const e = r.empresa;
-    const dl = document.createElement('dl');
-    linhaDado(dl, 'Razão social', e.razao_social);
-    linhaDado(dl, 'CNPJ', e.cnpj_formatado + (e.matriz ? ' (matriz)' : ' (filial)'));
-    linhaDado(dl, 'UF', e.uf);
-    linhaDado(dl, 'Situação cadastral', e.situacao_cadastral + (e.ativa ? '' : ' — atenção: empresa não está ativa'),
-              e.ativa ? '' : 'erro');
-    if (r.matriz) linhaDado(dl, 'Matriz', r.matriz.cnpj_formatado + ' — ' + r.matriz.uf);
-    dadosEmpresa.replaceChildren(dl);
+    cartao.classList.remove('compacta');
+    $('nova').hidden = true;
+    $('razao').textContent = e.razao_social;
+    $('fichas').replaceChildren(
+      ficha('CNPJ', e.cnpj_formatado + (e.matriz ? ' (matriz)' : ' (filial)')),
+      ficha('UF', e.uf),
+      ficha('Situação cadastral', e.situacao_cadastral, e.ativa ? '' : 'atencao'),
+      ...(r.matriz ? [ficha('Matriz', r.matriz.cnpj_formatado + ' · ' + r.matriz.uf)] : []));
     escolhas.replaceChildren();
-
     const avisos = [];
+    if (!e.ativa) avisos.push('Atenção: a situação cadastral não é ATIVA.');
     if (e.matriz) {
-      botaoEscolha('Emitir certidões', e);
+      botaoEscolha('Emitir certidões', e, true);
     } else {
       avisos.push('Este CNPJ é de filial. Escolha qual CNPJ consultar.');
-      botaoEscolha('Consultar a filial ' + e.cnpj_formatado + ' (' + e.uf + ')', e);
-      if (r.matriz) {
-        botaoEscolha('Consultar a matriz ' + r.matriz.cnpj_formatado + ' (' + r.matriz.uf + ')', r.matriz);
-      }
+      botaoEscolha('Consultar a filial ' + e.cnpj_formatado + ' (' + e.uf + ')', e, true);
+      if (r.matriz) botaoEscolha('Consultar a matriz ' + r.matriz.cnpj_formatado + ' (' + r.matriz.uf + ')', r.matriz);
       if (r.erro_matriz) avisos.push(r.erro_matriz);
     }
+    // A falência pelo e-SAJ só vale para CNPJ de SP (REQ-04): fora de SP, o e-mail não é pedido.
+    $('campo-email').hidden = ![e.uf, r.matriz && r.matriz.uf].includes('SP');
     avisoEmpresa.textContent = avisos.join(' ');
-    avisoEmpresa.className = avisos.length ? 'alerta' : '';
     cartao.hidden = false;
+  }
+
+  function novaConsulta() {
+    cartao.hidden = true; lista.hidden = true; avisoFilial.hidden = true; $('vez').hidden = true;
+    corpo.replaceChildren(); linhas.clear(); mostrar('');
+    const campo = $('cnpj'); campo.value = ''; campo.focus();
   }
 
   async function iniciar(cnpj) {
@@ -252,23 +371,44 @@
       if (!r.ok) {
         mostrar(r.mensagem, true);
         travar(false);
-        if (r.campo === 'email') {
-          email.setAttribute('aria-invalid', 'true');
-          email.focus();
-        }
+        if (r.campo === 'email') { email.setAttribute('aria-invalid', 'true'); email.focus(); }
         return;
       }
-      corpo.replaceChildren();
-      linhas.clear();
+      corpo.replaceChildren(); linhas.clear();
+      cartao.classList.add('compacta');
+      $('nova').hidden = false;
       avisoFilial.textContent = r.aviso || '';
       avisoFilial.hidden = !r.aviso;
-      mostrar('Consultando o CNPJ ' + r.cnpj + '...');
+      mostrar('');
       acompanhar();
     } catch (erro) {
       mostrar('Erro inesperado: ' + erro, true);
       travar(false);
     }
   }
+
+  $('vez-copiar').addEventListener('click', async () => {
+    const ok = await window.pywebview.api.copiar_cnpj(chaveDaVez);
+    $('vez-copiar').textContent = ok ? 'CNPJ copiado' : 'Não foi possível copiar';
+    setTimeout(() => { $('vez-copiar').textContent = 'Copiar o CNPJ de novo'; }, 2000);
+  });
+  $('vez-pular').addEventListener('click', async () => {
+    $('vez-pular').disabled = true;
+    if (!await window.pywebview.api.pular(chaveDaVez)) $('vez-pular').disabled = false;
+  });
+  $('vez-informar').addEventListener('click', async () => {
+    $('vez-informar').disabled = true;
+    if (!await window.pywebview.api.informar_nao_emitida(chaveDaVez, $('vez-mensagem').value)) $('vez-informar').disabled = false;
+  });
+  $('capa').addEventListener('click', async () => {
+    $('capa').disabled = true;
+    const r = await window.pywebview.api.gerar_capa();
+    mostrar(r.ok ? 'Capa salva em ' + r.arquivo : r.mensagem, !r.ok);
+    $('capa').disabled = false;
+  });
+  $('pasta').addEventListener('click', () => window.pywebview.api.abrir_pasta());
+  $('nova').addEventListener('click', novaConsulta);
+  $('nova-fim').addEventListener('click', novaConsulta);
 
   window.addEventListener('pywebviewready', async () => {
     try {
@@ -279,20 +419,14 @@
     }
   });
 
-  document.getElementById('formulario').addEventListener('submit', async (evento) => {
+  $('formulario').addEventListener('submit', async (evento) => {
     evento.preventDefault();
     travar(true);
-    cartao.hidden = true;
-    avisoFilial.hidden = true;
-    mostrar('Identificando a empresa...');
+    cartao.hidden = true; avisoFilial.hidden = true;
+    mostrar('Identificando a empresa…');
     try {
-      const r = await window.pywebview.api.identificar(document.getElementById('cnpj').value);
-      if (r.ok) {
-        mostrar('');
-        mostrarEmpresa(r);
-      } else {
-        mostrar(r.mensagem, true);
-      }
+      const r = await window.pywebview.api.identificar($('cnpj').value);
+      if (r.ok) { mostrar(''); mostrarEmpresa(r); } else { mostrar(r.mensagem, true); }
     } catch (erro) {
       mostrar('Erro inesperado: ' + erro, true);
     }

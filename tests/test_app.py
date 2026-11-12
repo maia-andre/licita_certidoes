@@ -402,7 +402,7 @@ def test_pular_e_repetir_pela_api():
 
 def test_tela_tem_botoes_pular_e_repetir():
     html = app.TELA.read_text(encoding="utf-8")
-    for trecho in ("'Pular'", "'Repetir'", "api.pular(", "api.repetir("):
+    for trecho in ("Pular esta certidão", "'Repetir'", "api.pular(", "api.repetir("):
         assert trecho in html
 
 
@@ -484,3 +484,81 @@ def test_filial_escolhida_passa_o_cnpj_da_matriz_para_a_sequencia():
     api.emitir(FILIAL)
     api.emitir(CNPJ)
     assert recebidos == [(FILIAL, CNPJ), (CNPJ, None)]
+
+
+def test_emitir_cria_a_consulta_numa_subpasta_com_data_e_hora(tmp_path):
+    import datetime as dt
+
+    api = app.Api(itens=[item("a", obtem("/tmp/a.pdf"))], abrir=lambda c: None, executar=lambda f: f(),
+                  consultar=matriz_sp, preferencias=PreferenciasMemoria(), pasta_base=tmp_path,
+                  relogio=lambda: dt.datetime(2026, 11, 12, 16, 35, 9))
+    iniciar(api)
+    assert api._execucao.pasta_consulta == tmp_path / CNPJ / "2026-11-12 16h35"
+
+
+def test_copiar_cnpj_usa_o_cnpj_que_o_portal_do_item_recebe():
+    filial = Empresa(FILIAL, "EMPRESA FICTICIA LTDA", "SP", "ATIVA", False)
+    copiados = []
+    cnd = Item("cnd", "CND", "Receita", obtem("/tmp/cnd.pdf"), "", precisa=("matriz",))
+    api = app.Api(itens=[cnd, item("crf", obtem("/tmp/crf.pdf"))], abrir=lambda c: None, executar=lambda f: f(),
+                  consultar=empresas(**{f"c{FILIAL}": filial, f"c{CNPJ}": matriz_sp(CNPJ)}),
+                  preferencias=PreferenciasMemoria(), copiar=lambda t: copiados.append(t) or True)
+    assert api.copiar_cnpj("cnd") is False  # sem consulta
+    api.identificar(FILIAL)
+    api.emitir(FILIAL)
+    assert api.copiar_cnpj("cnd") is True and api.copiar_cnpj("crf") is True
+    assert copiados == [CNPJ, FILIAL]
+
+
+def test_abrir_pasta_abre_a_subpasta_da_consulta(tmp_path):
+    abertos = []
+    origem = tmp_path / "a.pdf"
+    origem.write_bytes(b"%PDF")
+    api = app.Api(itens=[item("a", lambda cnpj, ao_aguardar, **kw: origem)], abrir=abertos.append,
+                  executar=lambda f: f(), consultar=matriz_sp, preferencias=PreferenciasMemoria(), pasta_base=tmp_path)
+    assert api.abrir_pasta() is False
+    iniciar(api)
+    assert api.abrir_pasta() is True
+    assert abertos == [api._execucao.pasta_consulta] and abertos[0].parent == tmp_path / CNPJ
+
+
+def test_gerar_capa_entrega_empresa_itens_e_pasta_e_abre_o_pdf(tmp_path):
+    recebidos, abertos = {}, []
+
+    def gerar(empresa, identificado_em, itens, inicio, pasta):
+        recebidos.update(empresa=empresa, itens=itens, pasta=pasta)
+        return pasta / "capa.pdf"
+
+    api = app.Api(itens=[item("a", obtem("/tmp/a.pdf"))], abrir=abertos.append, executar=lambda f: f(),
+                  consultar=matriz_sp, preferencias=PreferenciasMemoria(), pasta_base=tmp_path, gerar_capa=gerar)
+    assert api.gerar_capa()["ok"] is False  # sem consulta
+    iniciar(api)
+    resposta = api.gerar_capa()
+    assert resposta == {"ok": True, "arquivo": str(api._execucao.pasta_consulta / "capa.pdf")}
+    assert recebidos["empresa"]["razao_social"] == "EMPRESA FICTICIA LTDA"
+    assert [i["chave"] for i in recebidos["itens"]] == ["a"]
+    assert abertos == [api._execucao.pasta_consulta / "capa.pdf"]
+
+
+def test_gerar_capa_nao_roda_durante_a_consulta_e_mostra_erro_da_capa(tmp_path):
+    from certidoes import capa
+
+    agendadas = []
+
+    def falha(*args):
+        raise capa.CapaErro("Não foi possível gerar a capa: o Chromium do Playwright não abriu.")
+
+    api = app.Api(itens=[item("a", obtem("/tmp/a.pdf"))], abrir=lambda c: None, executar=agendadas.append,
+                  consultar=matriz_sp, preferencias=PreferenciasMemoria(), pasta_base=tmp_path, gerar_capa=falha)
+    iniciar(api)
+    assert api.gerar_capa() == {"ok": False, "mensagem": app.EM_ANDAMENTO}
+    agendadas.pop()()
+    assert api.gerar_capa() == {"ok": False, "mensagem": "Não foi possível gerar a capa: o Chromium do Playwright não abriu."}
+
+
+def test_tela_tem_cartao_da_vez_resumo_e_capa():
+    html = app.TELA.read_text(encoding="utf-8")
+    for trecho in ('id="vez"', "Copiar o CNPJ de novo", "api.copiar_cnpj(", "Gerar capa em PDF", "api.gerar_capa()",
+                   "api.abrir_pasta()", "Nova consulta", "'Positiva': 'vermelho'",
+                   "'Positiva com efeitos de negativa': 'verde'"):
+        assert trecho in html
