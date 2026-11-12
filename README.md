@@ -206,11 +206,11 @@ O programa nasceu para a rotina de uma prefeitura, mas a dor é a mesma em qualq
 
 Contribuições especialmente úteis:
 
-- **Portal da CND municipal do seu município.** Endereço, se pede captcha ou login e se emite o PDF na hora ou por pedido.
+- **Portal da CND municipal do seu município.** Endereço, se pede captcha ou login e se emite o PDF na hora ou por pedido. Use o formulário [CND municipal do meu município](https://github.com/maia-andre/licita_certidoes/issues/new?template=cnd-municipal.yml); o andamento fica na issue [#6](https://github.com/maia-andre/licita_certidoes/issues/6).
 - **Exigências de habilitação dos seus editais.** Certidões padrão que não estão na [tabela](#-o-que-os-editais-pedem).
 - **Testes com CNPJs reais.** Uma certidão em que a situação ou a validade lidas não conferem com o PDF.
 
-Basta abrir uma issue com o que você encontrou. Para mexer no código, a [especificação](docs/spec.md) traz as regras que todo portal novo precisa seguir: sem contornar captcha, sem agregador pago e sem guardar senhas.
+Para os demais casos, basta abrir uma issue com o que você encontrou. Para mexer no código, a [especificação](docs/spec.md) traz as regras que todo portal novo precisa seguir: sem contornar captcha, sem agregador pago e sem guardar senhas.
 
 ## 🛡️ Princípios
 
