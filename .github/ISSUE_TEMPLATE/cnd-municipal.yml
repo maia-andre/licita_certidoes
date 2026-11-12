@@ -1,0 +1,73 @@
+name: CND municipal do meu município
+description: Informe como se emite a certidão de débitos municipais (ISS/mobiliária) no portal de um município.
+title: "[CND municipal] <Município>/<UF>"
+labels: ["cnd-municipal", "help wanted"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por ajudar a mapear as CNDs municipais! Cada município tem um portal próprio, e é isso que permite ao `licita_certidoes` abrir o portal certo a partir da sede do fornecedor.
+
+        Não é preciso emitir a certidão: basta abrir o portal e descrever o que aparece.
+  - type: input
+    id: municipio
+    attributes:
+      label: Município e UF
+      placeholder: "Ex.: São José dos Campos/SP"
+    validations:
+      required: true
+  - type: input
+    id: endereco
+    attributes:
+      label: Endereço do portal da CND
+      description: O link da página em que se pede a certidão, se possível o mais direto.
+      placeholder: "https://..."
+    validations:
+      required: true
+  - type: input
+    id: certidao
+    attributes:
+      label: Nome da certidão no portal
+      placeholder: "Ex.: Certidão Negativa de Débitos Mobiliários"
+  - type: dropdown
+    id: acesso
+    attributes:
+      label: O que o portal pede para emitir?
+      multiple: true
+      options:
+        - Só o CNPJ, sem captcha
+        - Captcha (imagem, reCAPTCHA, hCaptcha, Turnstile...)
+        - Login gov.br
+        - Login próprio do município (senha do contribuinte)
+        - Inscrição municipal ou outro dado além do CNPJ
+        - Não sei
+    validations:
+      required: true
+  - type: dropdown
+    id: emissao
+    attributes:
+      label: Como a certidão sai?
+      options:
+        - Na hora, em PDF
+        - Por pedido, com prazo de análise
+        - Só presencialmente
+        - Não sei
+    validations:
+      required: true
+  - type: input
+    id: sistema
+    attributes:
+      label: Sistema ou fornecedor do portal (se souber)
+      placeholder: "Ex.: iiTributário, GovBR, Betha, IPM, sistema próprio..."
+  - type: textarea
+    id: observacoes
+    attributes:
+      label: Observações
+      description: Horário de funcionamento, validade da certidão, mensagens do portal, prints de tela...
+  - type: checkboxes
+    id: cuidados
+    attributes:
+      label: Cuidados
+      options:
+        - label: Não incluí senhas, dados pessoais nem dados de empresas reais nesta issue ou nos prints.
+          required: true
