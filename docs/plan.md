@@ -98,7 +98,7 @@ O INC-02 antecipa o maior risco técnico (hCaptcha em navegador automatizado). S
   - o Portal da Transparência pede captcha (AWS WAF);
   - a Consulta Consolidada do TCU respondeu sem captcha e gerou o PDF, com CEIS, CNEP, inidôneos do TCU e CNIA do CNJ (o CNJ estava indisponível no teste);
   - o TCE-SP gera a certidão de apenados com Cloudflare Turnstile;
-  - o sistema tributário de SJC migrou em 03/11/2026 para o iiTributário, com login por CPF, e a CND mobiliária ainda não foi liberada.
+  - o sistema tributário de SJC começou a migrar em 09/11/2026 para o iiTributário, com login por CPF, e a CND mobiliária ainda não foi liberada.
 
   Novos incrementos: INC-11 (TCU), INC-12 (TCE-SP) e INC-13 (SJC, adiado). O INC-10 passa para depois deles.
 - **2026-11-12 — TCE-SP no navegador do servidor.** Reconhecimento só de leitura: o formulário "Gerar Certidão" abre direto pelo endereço; "Gerar" abre uma janela com o Turnstile, e "OK" gera a certidão na tela, com o link de PDF. Em duas tentativas assistidas no Chromium do Playwright, o Turnstile falhou com o erro 600010 (recusa de navegador automatizado). No navegador normal do servidor, o mesmo CNPJ gerou a certidão sem problema. Pela CE-15, o item 8 passou ao modo navegador do servidor (spec 1.9), sem tentar contornar. A certidão imprime "válido até" com a data da própria consulta, e o programa mostra essa data (RN-04).
