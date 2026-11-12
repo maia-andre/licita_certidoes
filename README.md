@@ -9,7 +9,7 @@ Programa local e gratuito para pregoeiros, gestores e fiscais de contratos.
 [![Versão](https://img.shields.io/github/v/release/maia-andre/licita_certidoes?label=vers%C3%A3o&color=blue)](https://github.com/maia-andre/licita_certidoes/releases)
 ![Status](https://img.shields.io/badge/status-em%20constru%C3%A7%C3%A3o-orange)
 ![Certidões](https://img.shields.io/badge/certid%C3%B5es-6%20de%209-2EAD33)
-![Testes](https://img.shields.io/badge/testes-246%20passando-brightgreen)
+![Testes](https://img.shields.io/badge/testes-249%20passando-brightgreen)
 <br>
 ![Python](https://img.shields.io/badge/Python-3.14-3776AB?logo=python&logoColor=white)
 ![Playwright](https://img.shields.io/badge/Playwright-Chromium-2EAD33?logo=playwright&logoColor=white)
@@ -43,10 +43,9 @@ flowchart LR
     B -- Sim --> I[Identifica a empresa<br/>na BrasilAPI]
     I --> J{Filial?}
     J -- Sim --> K[Servidor escolhe<br/>filial ou matriz]
-    J -- Não --> L{CNPJ de SP?}
-    K --> L
-    L -- Não --> M[Informa que não é<br/>atendida, sem abrir portais]
-    L -- Sim --> D[Percorre as certidões<br/>uma a uma]
+    J -- Não --> D[Percorre as certidões<br/>uma a uma]
+    K --> D
+    D --> N[Portal de outra UF:<br/>Não se aplica]
     D --> E[Servidor resolve<br/>o captcha, se houver]
     E --> F[PDF salvo na<br/>pasta do CNPJ]
     F --> H[Tela mostra situação,<br/>validade e Abrir PDF]
@@ -68,6 +67,7 @@ Seis certidões em sequência, numa só tela, com o estado de cada uma atualizad
 A numeração segue a lista da [especificação](docs/spec.md) (RN-01). Os itens 4, 6 e 9 estão [adiados](#-caminho-para-as-demais-exigências).
 
 **Em todas elas, o programa:**
+- atende CNPJ de qualquer UF; a certidão cujo portal só atende SP (hoje, a falência pelo e-SAJ) fica "Não se aplica" fora de SP, com a indicação de onde obtê-la;
 - valida o CNPJ, numérico ou alfanumérico, antes de qualquer consulta externa;
 - guarda o PDF em `Certidoes\<CNPJ>\` (no Windows, `C:\Users\<usuário>\Certidoes\`) e o abre pela tela;
 - lê do PDF a situação e a validade e avisa quando a certidão está vencida; na dúvida, mostra **"Conferir no PDF"** e nunca presume;
@@ -136,10 +136,11 @@ O que falta, o que impede e um caminho possível para cada exigência. Nenhum de
 
 | Exigência | O que impede hoje | Caminho possível |
 |---|---|---|
-| **CND estadual (ICMS)**<br/>Certidão Única do SIDEB | "Emitir eCND" leva ao login gov.br. O programa não automatiza gov.br. | Modo navegador do servidor: o servidor entra no gov.br no próprio navegador, e o programa só recolhe o PDF. Depende de o login do servidor permitir emitir para o CNPJ de terceiro. |
+| **CND estadual (ICMS)**<br/>SP: Certidão Única do SIDEB | "Emitir eCND" leva ao login gov.br. O programa não automatiza gov.br. | Modo navegador do servidor: o servidor entra no gov.br no próprio navegador, e o programa só recolhe o PDF. Depende de o login do servidor permitir emitir para o CNPJ de terceiro. |
+| **CND estadual**<br/>outras UFs | Cada estado tem um portal próprio; em alguns, Fazenda e dívida ativa saem em certidões separadas. | Mapeamento colaborativo na issue [#7](https://github.com/maia-andre/licita_certidoes/issues/7): o programa usa a UF do CNPJ para abrir o portal certo, no modo que cada um aceitar. |
 | **Complemento cível**<br/>eproc/TJSP | O pedido exige gov.br nível ouro ou prata. | O servidor faz o pedido no próprio navegador, com o gov.br dele. A página de download (número do pedido e CNPJ) é aberta e poderia ser consultada pelo programa, como já se faz no e-SAJ. |
 | **CND municipal (ISS)**<br/>São José dos Campos | O sistema tributário migrou em 11/2026 para o iiTributário, que ainda não oferece a CND mobiliária. | O iiTributário tem, em outros municípios, uma consulta pública por CNPJ e motivo do pedido que gera o PDF. Quando estiver disponível em SJC, deve caber no modo automatizado ou no navegador do servidor. |
-| **CND municipal**<br/>outros municípios | Cada prefeitura tem um portal próprio. | Um catálogo de portais municipais, mapeado com a ajuda de colaboradores de cada município: o programa usa o município da sede (BrasilAPI) para abrir o portal certo, no modo que cada um aceitar. |
+| **CND municipal**<br/>outros municípios | Cada prefeitura tem um portal próprio. | Um catálogo de portais municipais, mapeado com a ajuda de colaboradores de cada município na issue [#6](https://github.com/maia-andre/licita_certidoes/issues/6): o programa usa o município da sede (BrasilAPI) para abrir o portal certo, no modo que cada um aceitar. |
 | **Inscrição no CNPJ** | Os dados já vêm da BrasilAPI, mas o comprovante oficial é da Receita, com captcha. | Modo navegador do servidor, como a CND federal. |
 | **Inscrição estadual** | Não foi feito reconhecimento. | Verificar a consulta pública do Cadesp/Sintegra. Se tiver captcha, modo navegador do servidor. |
 | **Inscrição municipal** | Cada prefeitura tem a sua. | O mesmo catálogo da CND municipal. |
@@ -188,7 +189,7 @@ timeline
 | 02 | CND federal e sequência de itens | CNDT e CND em sequência, com o estado de cada item | ✅ |
 | 03 | CRF FGTS | CRF obtido ou "Não emitida" com a mensagem do portal | ✅ |
 | 04 | Situação e validade na tela | Dados lidos do PDF, ou "Conferir no PDF" | ✅ |
-| 05 | Identificação da empresa | Dados da BrasilAPI, escolha de filial e recusa fora de SP | ✅ |
+| 05 | Identificação da empresa | Dados da BrasilAPI e escolha entre filial e matriz | ✅ |
 | 06 | Certidão Única estadual | Emissão pelo SIDEB | ⏸️ Exige login gov.br |
 | 07 | Pular e repetir itens | Refazer só o item que falhou | ✅ |
 | 08 | Falência no e-SAJ | Pedido enviado e certidão baixada, se já liberada | ✅ |
@@ -202,11 +203,12 @@ timeline
 
 ## 🤝 Como colaborar
 
-O programa nasceu para a rotina de uma prefeitura, mas a dor é a mesma em qualquer órgão que contrata pela Lei 14.133/2021. As certidões federais e estaduais servem a todos; o que muda de um lugar para outro é o **portal municipal** e a **lista de exigências padrão** de cada órgão. Essas duas coisas se mapeiam muito mais rápido em conjunto.
+O programa nasceu para a rotina de uma prefeitura, mas a dor é a mesma em qualquer órgão que contrata pela Lei 14.133/2021. As certidões federais servem a todos; o que muda de um lugar para outro são os **portais estadual e municipal** e a **lista de exigências padrão** de cada órgão. Essas duas coisas se mapeiam muito mais rápido em conjunto.
 
 Contribuições especialmente úteis:
 
 - **Portal da CND municipal do seu município.** Endereço, se pede captcha ou login e se emite o PDF na hora ou por pedido. Use o formulário [CND municipal do meu município](https://github.com/maia-andre/licita_certidoes/issues/new?template=cnd-municipal.yml); o andamento fica na issue [#6](https://github.com/maia-andre/licita_certidoes/issues/6).
+- **Portal da CND estadual do seu estado.** As mesmas informações, e se Fazenda e dívida ativa saem numa certidão só. Use o formulário [CND estadual do meu estado](https://github.com/maia-andre/licita_certidoes/issues/new?template=cnd-estadual.yml); o andamento fica na issue [#7](https://github.com/maia-andre/licita_certidoes/issues/7).
 - **Exigências de habilitação dos seus editais.** Certidões padrão que não estão na [tabela](#-o-que-os-editais-pedem).
 - **Testes com CNPJs reais.** Uma certidão em que a situação ou a validade lidas não conferem com o PDF.
 
