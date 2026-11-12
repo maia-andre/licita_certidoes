@@ -23,6 +23,7 @@ Programa local e gratuito para pregoeiros, gestores e fiscais de contratos.
 [Como obtemos](#-como-obtemos-cada-certidão) ·
 [Caminho para as demais](#-caminho-para-as-demais-exigências) ·
 [Versões e marcos](#-versões-e-marcos) ·
+[Como colaborar](#-como-colaborar) ·
 [Como rodar](#-como-rodar)
 
 </div>
@@ -75,7 +76,7 @@ A numeração segue a lista da [especificação](docs/spec.md) (RN-01). Os itens
 
 ## 📋 O que os editais pedem
 
-Levantamento feito nas minutas padrão de edital de 2026 da Prefeitura de São José dos Campos: concorrência (5 variantes), aquisição de bens (3), registro de preços e transporte. Foram lidas 10 das 16 minutas.
+Ponto de partida: as minutas padrão de edital de 2026 da Prefeitura de São José dos Campos (concorrência, aquisição de bens, registro de preços e transporte). Outros órgãos podem ter outras exigências padrão; veja [como colaborar](#-como-colaborar).
 
 | Exigência no edital | Em quais minutas | No programa |
 |---|---|---|
@@ -93,9 +94,6 @@ Levantamento feito nas minutas padrão de edital de 2026 da Prefeitura de São J
 | Certidão simplificada da Junta (ME/EPP) | todas | ⬜ Fora (a JUCESP cobra pela certidão) |
 | Registro no CREA/CAU | só concorrências de engenharia | ⬜ Fora do escopo atual |
 | Alvará ou licença específica | depende do objeto | ⬜ Fora (varia caso a caso) |
-
-> [!NOTE]
-> As 6 minutas não lidas (serviço, serviço de engenharia, locação e transporte escolar) não abriram nesta máquina por falta de memória. A habilitação delas provavelmente segue o mesmo padrão, mas isso não foi conferido.
 
 ## 🔧 Como obtemos cada certidão
 
@@ -141,7 +139,7 @@ O que falta, o que impede e um caminho possível para cada exigência. Nenhum de
 | **CND estadual (ICMS)**<br/>Certidão Única do SIDEB | "Emitir eCND" leva ao login gov.br. O programa não automatiza gov.br. | Modo navegador do servidor: o servidor entra no gov.br no próprio navegador, e o programa só recolhe o PDF. Depende de o login do servidor permitir emitir para o CNPJ de terceiro. |
 | **Complemento cível**<br/>eproc/TJSP | O pedido exige gov.br nível ouro ou prata. | O servidor faz o pedido no próprio navegador, com o gov.br dele. A página de download (número do pedido e CNPJ) é aberta e poderia ser consultada pelo programa, como já se faz no e-SAJ. |
 | **CND municipal (ISS)**<br/>São José dos Campos | O sistema tributário migrou em 11/2026 para o iiTributário, que ainda não oferece a CND mobiliária. | O iiTributário tem, em outros municípios, uma consulta pública por CNPJ e motivo do pedido que gera o PDF. Quando estiver disponível em SJC, deve caber no modo automatizado ou no navegador do servidor. |
-| **CND municipal**<br/>outros municípios | Cada prefeitura tem um portal próprio. | Um catálogo com o link da prefeitura da sede (o município vem da BrasilAPI), começando pelas cidades mais frequentes entre os fornecedores, no modo navegador do servidor. |
+| **CND municipal**<br/>outros municípios | Cada prefeitura tem um portal próprio. | Um catálogo de portais municipais, mapeado com a ajuda de colaboradores de cada município: o programa usa o município da sede (BrasilAPI) para abrir o portal certo, no modo que cada um aceitar. |
 | **Inscrição no CNPJ** | Os dados já vêm da BrasilAPI, mas o comprovante oficial é da Receita, com captcha. | Modo navegador do servidor, como a CND federal. |
 | **Inscrição estadual** | Não foi feito reconhecimento. | Verificar a consulta pública do Cadesp/Sintegra. Se tiver captcha, modo navegador do servidor. |
 | **Inscrição municipal** | Cada prefeitura tem a sua. | O mesmo catálogo da CND municipal. |
@@ -197,6 +195,18 @@ timeline
 | 13 | CND municipal de SJC | CND mobiliária para empresas com sede em SJC | ⏸️ Sistema em implantação |
 
 </details>
+
+## 🤝 Como colaborar
+
+O programa nasceu para a rotina de uma prefeitura, mas a dor é a mesma em qualquer órgão que contrata pela Lei 14.133/2021. As certidões federais e estaduais servem a todos; o que muda de um lugar para outro é o **portal municipal** e a **lista de exigências padrão** de cada órgão. Essas duas coisas se mapeiam muito mais rápido em conjunto.
+
+Contribuições especialmente úteis:
+
+- **Portal da CND municipal do seu município.** Endereço, se pede captcha ou login e se emite o PDF na hora ou por pedido.
+- **Exigências de habilitação dos seus editais.** Certidões padrão que não estão na [tabela](#-o-que-os-editais-pedem).
+- **Testes com CNPJs reais.** Uma certidão em que a situação ou a validade lidas não conferem com o PDF.
+
+Basta abrir uma issue com o que você encontrou. Para mexer no código, a [especificação](docs/spec.md) traz as regras que todo portal novo precisa seguir: sem contornar captcha, sem agregador pago e sem guardar senhas.
 
 ## 🛡️ Princípios
 
