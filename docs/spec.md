@@ -1,6 +1,6 @@
 # Spec: Obtenção assistida de certidões de fornecedores
-Versão: 1.6 — 2026-11-12 | Status: aprovada
-Alterações: 1.1 — Windows passa a ser a plataforma principal (RNF-01). 1.2 — Modo "navegador do servidor" para portais que recusam navegador automatizado (REQ-05, REQ-06, RNF-01, RN-09, CE-13). 1.3 — Caixa também no modo navegador do servidor; reconhecimento do PDF pelo conteúdo; "Não emitida" informada pelo servidor nesse modo (REQ-11, RN-09). 1.4 — Certidão Única estadual (item 4, RN-08, CE-07) adiada: o SIDEB exige login gov.br para emitir. 1.5 — e-SAJ testado: aceita navegador automatizado (RN-09); prazo do TJSP informado (pergunta 4). 1.6 — Falência: consulta imediata em "Visualizar Certidão" e download do PDF quando já liberado (REQ-12); situação "Nada consta" (RN-03); data de emissão no lugar da validade não impressa (RN-04); e-mail salvo no computador (REQ-12).
+Versão: 1.7 — 2026-11-12 | Status: aprovada
+Alterações: 1.1 — Windows passa a ser a plataforma principal (RNF-01). 1.2 — Modo "navegador do servidor" para portais que recusam navegador automatizado (REQ-05, REQ-06, RNF-01, RN-09, CE-13). 1.3 — Caixa também no modo navegador do servidor; reconhecimento do PDF pelo conteúdo; "Não emitida" informada pelo servidor nesse modo (REQ-11, RN-09). 1.4 — Certidão Única estadual (item 4, RN-08, CE-07) adiada: o SIDEB exige login gov.br para emitir. 1.5 — e-SAJ testado: aceita navegador automatizado (RN-09); prazo do TJSP informado (pergunta 4). 1.6 — Falência: consulta imediata em "Visualizar Certidão" e download do PDF quando já liberado (REQ-12); situação "Nada consta" (RN-03); data de emissão no lugar da validade não impressa (RN-04); e-mail salvo no computador (REQ-12). 1.7 — Complemento do eproc (item 6, REQ-13) adiado: o pedido exige login gov.br nível ouro ou prata (RN-10).
 
 ## Objetivo
 Em cada habilitação e a cada nota fiscal de contrato, servidores da Prefeitura de São José dos Campos (pregoeiros, gestores e fiscais) reúnem à mão, em portais diferentes, as certidões de regularidade do fornecedor. O projeto é um programa local em código aberto no qual o servidor digita um CNPJ, resolve apenas os captchas e logins que os portais exigirem e vê, em uma tela simples, a situação e a validade de cada certidão, com o PDF à mão. A primeira versão atende empresas com CNPJ de SP.
@@ -20,7 +20,7 @@ Em cada habilitação e a cada nota fiscal de contrato, servidores da Prefeitura
 - **REQ-10** — Para certidão obtida, o programa lê o texto do PDF e mostra a situação e a data de validade (RN-03 e RN-04).
 - **REQ-11** — Quando o portal não emitir a certidão, a tela mostra o estado "Não emitida" e a mensagem informada pelo portal. No modo "navegador do servidor", o programa não vê o portal: a tela oferece o botão "O portal não emitiu" e um campo opcional para o servidor colar a mensagem do portal.
 - **REQ-12** — Na falência pelo e-SAJ, o programa preenche o pedido com os dados conhecidos e o e-mail informado pelo servidor e aguarda o captcha. Enviado o pedido, consulta logo em "Visualizar Certidão" (número, data e CNPJ do pedido; sem captcha), em até 3 tentativas. Se a certidão já estiver liberada, guarda o PDF e o item fica "Obtida"; senão, o item fica "Pedido feito: acompanhar", com número, data e prazo do pedido. O e-mail fica salvo nas preferências do usuário no computador e volta preenchido na próxima consulta.
-- **REQ-13** — Na falência pelo eproc, o programa abre o portal para o servidor entrar com o gov.br e fazer o pedido. Quando o servidor confirmar na tela, o item fica como "Pedido feito: acompanhar".
+- **REQ-13** — *(Adiado; ver RN-10.)* Na falência pelo eproc, o programa abre o portal para o servidor entrar com o gov.br e fazer o pedido. Quando o servidor confirmar na tela, o item fica como "Pedido feito: acompanhar".
 - **REQ-14** — O servidor pode repetir apenas um item que tenha ficado em "Falha técnica", "Não emitida" ou "Pulada", sem refazer os demais.
 - **REQ-15** — A tela mostra um aviso permanente de que o programa só reúne informações e de que a análise e a decisão cabem ao servidor.
 
@@ -42,7 +42,7 @@ Em cada habilitação e a cada nota fiscal de contrato, servidores da Prefeitura
   | 3 | CNDT | TST | Fluxo principal |
   | 4 | Certidão Única estadual | SIDEB (Sefaz-SP/PGE-SP) | **Adiado** (exige login gov.br; ver RN-10) |
   | 5 | Falência, concordatas e recuperações | e-SAJ/TJSP | Assistido (REQ-12) |
-  | 6 | Complemento cível de primeiro grau | eproc/TJSP | Assistido (REQ-13) |
+  | 6 | Complemento cível de primeiro grau | eproc/TJSP | **Adiado** (exige login gov.br; ver RN-10) |
 
 - **RN-02** — Estados de um item: "Aguardando", "Em andamento", "Aguardando servidor", "Obtida", "Não emitida", "Falha técnica", "Pulada" e "Pedido feito: acompanhar". "Falha técnica" e "Pulada" nunca indicam irregularidade da empresa.
 - **RN-03** — Situação exibida: "Negativa", "Positiva com efeitos de negativa", "Positiva", "Regular" (CRF), "Nada consta" (falência, quando a certidão diz "verificou NADA CONSTAR") ou "Conferir no PDF". O programa usa "Conferir no PDF" sempre que não identificar a situação com segurança e nunca a presume.
@@ -57,7 +57,10 @@ Em cada habilitação e a cada nota fiscal de contrato, servidores da Prefeitura
     - Receita Federal: `CaptchaFalhaValidacao`, código 023, testado em 11/11/2026. PDF reconhecido pelo nome `Certidao-<CNPJ>.pdf`.
     - Caixa: bloqueio de robôs (Radware/ShieldSquare) já no primeiro acesso, testado em 11/11/2026. O CRF é uma página que o servidor salva como PDF pela opção "Imprimir"; o PDF é reconhecido pelo texto "Certificado de Regularidade do FGTS" e pelo CNPJ. Não repetir acessos automatizados à Caixa: a página de bloqueio registra o IP da rede da prefeitura.
   - O programa nunca tenta esconder a automação de um portal (RN-05).
-- **RN-10** — Itens adiados: a Certidão Única estadual (item 4) fica fora da sequência por enquanto. Em 11/11/2026, o botão "Emitir eCND" do SIDEB levou ao login gov.br (com hCaptcha). O programa não automatiza login gov.br. RN-08 e CE-07 voltam a valer se o item for retomado.
+- **RN-10** — Itens adiados, por exigirem login gov.br, que o programa não automatiza:
+  - Certidão Única estadual (item 4): em 11/11/2026, o botão "Emitir eCND" do SIDEB levou ao login gov.br (com hCaptcha). RN-08 e CE-07 voltam a valer se o item for retomado.
+  - Complemento do eproc (item 6): em 12/11/2026, `https://certidoes.tjsp.jus.br/` exigiu gov.br nível ouro ou prata para registrar o pedido. A página de download (`/download`, número do pedido e CPF/CNPJ) não pede login. REQ-13 volta a valer se o item for retomado.
+  - Enquanto adiados, o servidor obtém esses itens fora do programa.
 
 ## Casos extremos
 - **CE-01** (afeta REQ-01) — CNPJ com dígito verificador inválido: mostrar erro e não fazer consulta externa.
@@ -94,11 +97,11 @@ Em cada habilitação e a cada nota fiscal de contrato, servidores da Prefeitura
 - [ ] Dado um CNPJ de filial, a tela mostra a matriz e pede a escolha.
 - [ ] Com 10 CNPJs reais de SP, incluindo ao menos 1 filial, cada item termina em estado da RN-02 coerente com o ocorrido no portal.
 - [ ] Nesses 10 CNPJs, em toda certidão obtida, a situação e a validade na tela conferem com o PDF, ou a tela mostra "Conferir no PDF".
-- [ ] Nesses 10 CNPJs, os itens 5 e 6 terminam em "Pedido feito: acompanhar", exceto se pulados ou com falha informada.
+- [ ] Nesses 10 CNPJs, o item 5 termina em "Obtida" ou "Pedido feito: acompanhar", exceto se pulado ou com falha informada.
 
 ## Perguntas em aberto
 1. **Pasta dos PDFs:** esta spec adota uma pasta local por CNPJ apenas para o REQ-08 funcionar. O destino definitivo segue fora de escopo.
-2. **Viabilidade dos portais:** TST e e-SAJ aceitam navegador automatizado; Receita e Caixa recusam (RN-09); o SIDEB exige gov.br (RN-10). Falta testar o eproc.
-3. **eproc para terceiros:** não confirmei se o login gov.br do servidor permite pedir certidão de outro CNPJ. Se não permitir, o item 6 passa a ser apenas um aviso com o link.
+2. **Viabilidade dos portais:** TST e e-SAJ aceitam navegador automatizado; Receita e Caixa recusam (RN-09); o SIDEB e o eproc exigem gov.br (RN-10).
+3. **eproc para terceiros:** não confirmei se o login gov.br do servidor permite pedir certidão de outro CNPJ. Se não permitir, o item 6 passa a ser apenas um aviso com o link. Pergunta suspensa enquanto o item estiver adiado (RN-10).
 5. **Certidão Única estadual:** retomar se o SIDEB oferecer emissão sem login, ou se o login gov.br do servidor permitir emitir para CNPJ de terceiro (o servidor entraria no gov.br no próprio navegador, no modo da RN-09). Não testado em 11/11/2026.
 4. **Prazo e custo no TJSP:** no item 5, o e-SAJ informa "Prazo máximo para liberação da Certidão 05 dias" e não mostrou cobrança no pedido de 12/11/2026. Falta o item 6.

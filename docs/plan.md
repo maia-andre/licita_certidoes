@@ -1,6 +1,6 @@
 # Plan: Obtenção assistida de certidões de fornecedores
-Spec: docs/spec.md, versão 1.6 | Gerado: 2026-11-06
-Progresso: 7/10 incrementos concluídos (1 adiado)
+Spec: docs/spec.md, versão 1.7 | Gerado: 2026-11-06
+Progresso: 7/10 incrementos concluídos (2 adiados)
 
 ## Backlog
 
@@ -53,7 +53,7 @@ Depende de: INC-07
 Entrega verificável: um CNPJ real tem o pedido de falência enviado ao e-SAJ com o e-mail informado, e o item fica em "Pedido feito: acompanhar".
 
 ### INC-09 — Complemento no eproc e lista completa
-Status: pendente
+Status: adiado (2026-11-12) — o pedido no eproc exige login gov.br nível ouro ou prata (spec 1.7, RN-10)
 Itens da spec: REQ-13 | RNF-03 | RN-01
 Depende de: INC-08
 Entrega verificável: o eproc abre para o servidor entrar com o gov.br, o item fica em "Pedido feito: acompanhar" após a confirmação e os seis itens aparecem na tela, sem credenciais guardadas ao reiniciar o programa.
@@ -61,8 +61,8 @@ Entrega verificável: o eproc abre para o servidor entrar com o gov.br, o item f
 ### INC-10 — Validação com 10 CNPJs reais
 Status: pendente
 Itens da spec: Definição de concluído
-Depende de: INC-09
-Entrega verificável: um relatório mostra o resultado dos 10 CNPJs reais de SP, incluindo ao menos 1 filial, conferido com os PDFs.
+Depende de: INC-08 (INC-09 adiado)
+Entrega verificável: um relatório mostra o resultado dos 10 CNPJs reais de SP, nos quatro itens ativos da RN-01,, incluindo ao menos 1 filial, conferido com os PDFs.
 
 ## Cobertura
 Cada REQ, RNF, RN e CE da spec aparece em exatamente um incremento: REQ-01 a REQ-15, RNF-01 a RNF-06, RN-01 a RN-09 e CE-01 a CE-13.
@@ -75,3 +75,4 @@ O INC-02 antecipa o maior risco técnico (hCaptcha em navegador automatizado). S
 - **2026-11-11 — Certidão Única estadual adiada.** O SIDEB (`https://www4.fazenda.sp.gov.br/SIDEB/CertidaoNegativaDebitos`) aceita navegador automatizado na página inicial, mas "Emitir eCND" leva ao login gov.br, com hCaptcha. Decisão do servidor: deixar o item de fora por enquanto (spec 1.4, RN-10). O INC-07 depende só dos itens já existentes. O INC-09 (eproc) também envolve gov.br e deve ser reavaliado antes de começar.
 - **2026-11-12 — e-SAJ aceita navegador automatizado.** Sem login e sem bloqueio de robôs. Em teste assistido, o programa preencheu o pedido (modelo de falências, pessoa jurídica, razão social, CNPJ e e-mail) e o servidor marcou a confirmação e enviou; o reCAPTCHA aceitou o Chromium do Playwright e o TJSP registrou o pedido. A falência segue no modo automatizado, como o TST (spec 1.5).
 - **2026-11-12 — Certidão de falência baixada na hora.** A tela "Visualizar Certidão" do e-SAJ (número, data e CNPJ do pedido) não tem captcha. O pedido de teste já estava liberado, com "NADA CONSTAR". A pedido do servidor, o INC-08 passou a consultar logo após o pedido e a baixar o PDF quando liberado, e o e-mail passou a ficar salvo no computador (spec 1.6).
+- **2026-11-12 — Complemento do eproc adiado.** `https://certidoes.tjsp.jus.br/` exige gov.br nível ouro ou prata para registrar o pedido; só a página de download (número do pedido e CPF/CNPJ) é aberta. Decisão do servidor: não mexer com gov.br agora (spec 1.7, RN-10). O INC-10 passa a depender do INC-08 e valida os quatro itens ativos. RN-01 e RNF-03 continuam valendo: a lista da tela segue a RN-01 sem os itens adiados, e o programa não guarda nada do gov.br.

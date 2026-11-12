@@ -73,7 +73,7 @@ A primeira versão atende empresas com CNPJ de SP.
 | CRF FGTS | Caixa | ✅ Funcionando (no navegador do servidor) |
 | Certidão Única estadual | SIDEB (Sefaz-SP/PGE-SP) | ⏸️ Adiada (o SIDEB exige login gov.br) |
 | Falência, concordatas e recuperações | e-SAJ/TJSP | ✅ Funcionando (baixada na hora, se já liberada) |
-| Complemento cível de primeiro grau | eproc/TJSP | Planejada, com pedido assistido |
+| Complemento cível de primeiro grau | eproc/TJSP | ⏸️ Adiada (o pedido exige login gov.br) |
 
 ## Princípios
 
@@ -135,8 +135,8 @@ sudo apt install python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1
 | 06 | Certidão Única estadual | Emissão pelo SIDEB | ⏸️ Adiado: exige login gov.br |
 | 07 | Pular e repetir itens | Refazer só o item que falhou | ✅ Concluído |
 | 08 | Falência no e-SAJ | Pedido enviado e item em "Pedido feito: acompanhar" | ✅ Concluído |
-| 09 | Complemento no eproc | Pedido com gov.br e os seis itens na tela | ⏭️ Próximo |
-| 10 | Validação com CNPJs reais | Resultado de 10 CNPJs de SP conferido com os PDFs | Pendente |
+| 09 | Complemento no eproc | Pedido com gov.br e os seis itens na tela | ⏸️ Adiado: exige login gov.br |
+| 10 | Validação com CNPJs reais | Resultado de 10 CNPJs de SP conferido com os PDFs | ⏭️ Próximo |
 
 Receita e Caixa recusam navegador automatizado (a Caixa bloqueia já no primeiro acesso). Por isso, a CND federal e o CRF são emitidos no navegador normal do servidor, sem contornar a recusa. Quando o portal não emite, o servidor informa pela tela, com o botão "O portal não emitiu".
 
